@@ -4,6 +4,7 @@ import os
 from compose.config.config import ConfigDetails, ConfigFile, load
 from compose.container import Container
 from compose.project import Project
+from compose.service import ImageType
 from compose.cli.docker_client import docker_client
 from compose.config.environment import Environment
 
@@ -66,6 +67,23 @@ def run_command_on_host(command):
     return logs
 
 
+def run_cmd(command):
+    if command.startswith('"'):
+        cmd = "bash -c %s" % command
+    else:
+        cmd = command
+
+    output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
+
+    return output
+
+
+def get_internal_ip(nw_interface="eth0"):
+    cmd = "/sbin/ifconfig %s | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'" % nw_interface
+
+    return run_cmd(cmd)
+
+
 class TestContainer(Container):
 
     def state(self):
@@ -102,6 +120,7 @@ class TestCluster():
         return project
 
     def start(self):
+        self.shutdown()
         self.get_project().up()
 
     def is_running(self):
@@ -113,7 +132,7 @@ class TestCluster():
 
     def shutdown(self):
         project = self.get_project()
-        project.stop()
+        project.down(ImageType.none, True, True)
         project.remove_stopped()
 
     def get_container(self, service_name, stopped=False):
@@ -153,30 +172,3 @@ class TestCluster():
 
         return results
 
-
-class TestMachine():
-
-    def __init__(self, machine_name):
-        self.machine_name = machine_name
-
-    def run_cmd(self, cmd):
-        output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-        return output
-
-    def get_internal_ip(self, nw_interface="eth0"):
-        cmd = "/sbin/ifconfig %s | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'" % nw_interface
-        return self.run_cmd(cmd)
-
-    def scp_to_machine(self, local_path, machine_path, recursive=True):
-        if recursive:
-            recursive_flag = "-r"
-        cmd = "cp %s %s %s" % (recursive_flag, local_path, machine_path)
-        return self.run_cmd(cmd)
-
-    def ssh(self, command):
-        if command.startswith('"'):
-            cmd = "bash -c %s" % command
-        else:
-            cmd = command
-
-        return self.run_cmd(cmd)
