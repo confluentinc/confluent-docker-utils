@@ -78,12 +78,6 @@ def run_cmd(command):
     return output
 
 
-def get_internal_ip(nw_interface="eth0"):
-    cmd = "/sbin/ifconfig %s | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'" % nw_interface
-
-    return run_cmd(cmd)
-
-
 class TestContainer(Container):
 
     def state(self):
