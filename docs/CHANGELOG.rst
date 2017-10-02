@@ -1,5 +1,10 @@
-Version 0.0.4
+Version 0.0.5
 ================================================================================
+
+* update for docker api changes
+
+Version 0.0.4
+--------------------------------------------------------------------------------
 
 * Merge branch 'master' of github.com:confluentinc/confluent-docker-utils
 * remove unused function
