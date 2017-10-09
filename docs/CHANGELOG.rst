@@ -1,5 +1,11 @@
-Version 0.0.8
+Version 0.0.9
 ================================================================================
+
+* Merge branch 'master' of github.com:confluentinc/confluent-docker-utils
+* allow caller to pass in a tag
+
+Version 0.0.8
+--------------------------------------------------------------------------------
 
 * add jinja2 to requirements
 
