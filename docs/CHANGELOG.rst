@@ -1,5 +1,10 @@
-Version 0.0.7
+Version 0.0.8
 ================================================================================
+
+* add jinja2 to requirements
+
+Version 0.0.7
+--------------------------------------------------------------------------------
 
 * Merge branch 'master' of github.com:confluentinc/confluent-docker-utils
 * extract cub and dub utilities from cp-docker-images
