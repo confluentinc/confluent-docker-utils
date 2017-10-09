@@ -26,4 +26,10 @@ setuptools.setup(
     python_requires='>=2.7',
     setup_requires=['setuptools-git'],
 
+    entry_points={
+        "console_scripts": [
+            "cub = confluent.docker_utils.cub:main",
+            "dub = confluent.docker_utils.dub:main",
+        ]
+    }
 )
