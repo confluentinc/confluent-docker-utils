@@ -19,10 +19,10 @@ def build_image(image_name, dockerfile_dir):
     print(response)
 
 
-def image_exists(image_name):
+def image_exists(image_name, tag="latest"):
     client = docker.APIClient()
     tags = [t for image in client.images() for t in image['RepoTags']]
-    return "%s:%s" % (image_name, "latest") in tags
+    return "%s:%s" % (image_name, tag) in tags
 
 
 def pull_image(image_name):
