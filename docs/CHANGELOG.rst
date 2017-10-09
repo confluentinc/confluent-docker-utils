@@ -1,5 +1,11 @@
-Version 0.0.6
+Version 0.0.7
 ================================================================================
+
+* Merge branch 'master' of github.com:confluentinc/confluent-docker-utils
+* extract cub and dub utilities from cp-docker-images
+
+Version 0.0.6
+--------------------------------------------------------------------------------
 
 * fix wording
 * add basic README
