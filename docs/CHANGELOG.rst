@@ -1,5 +1,10 @@
-Version 0.0.9
+Version 0.0.10
 ================================================================================
+
+* pass in tag as part of image name
+
+Version 0.0.9
+--------------------------------------------------------------------------------
 
 * Merge branch 'master' of github.com:confluentinc/confluent-docker-utils
 * allow caller to pass in a tag
