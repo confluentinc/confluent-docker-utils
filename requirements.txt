@@ -1,3 +1,4 @@
-requests!=2.11.0,<2.12,>=2.6.1
 docker==2.5.1
 docker-compose==1.16.1
+Jinja2==2.9.6
+requests!=2.11.0,<2.12,>=2.6.1
