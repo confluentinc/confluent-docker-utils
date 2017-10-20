@@ -165,4 +165,3 @@ class TestCluster():
             results[container.name_without_project] = self.run_command(command, container)
 
         return results
-

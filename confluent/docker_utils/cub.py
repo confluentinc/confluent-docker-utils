@@ -35,13 +35,11 @@ import os
 import sys
 import socket
 import time
-from contextlib import closing
-import collections
-import time
-import json
 import re
 import requests
 import subprocess
+
+CLASSPATH = '"/usr/share/java/cp-base/*"'
 
 
 def wait_for_service(host, port, timeout):
@@ -86,7 +84,7 @@ def check_zookeeper_ready(connect_string, timeout):
     """
     cmd_template = """
              java {jvm_opts} \
-                 -cp /etc/confluent/docker/docker-utils.jar  \
+                 -cp {classpath}" \
                  io.confluent.admin.utils.cli.ZookeeperReadyCommand \
                  {connect_string} \
                  {timeout_in_ms}"""
@@ -102,6 +100,7 @@ def check_zookeeper_ready(connect_string, timeout):
         jvm_opts = os.environ.get("KAFKA_OPTS")
 
     cmd = cmd_template.format(
+        classpath=CLASSPATH,
         jvm_opts=jvm_opts or "",
         connect_string=connect_string,
         timeout_in_ms=timeout * 1000)
@@ -135,12 +134,13 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
     """
     cmd_template = """
              java {jvm_opts} \
-                 -cp /etc/confluent/docker/docker-utils.jar  \
+                 -cp {classpath} \
                  io.confluent.admin.utils.cli.KafkaReadyCommand \
                  {expected_brokers} \
                  {timeout_in_ms}"""
 
     cmd = cmd_template.format(
+        classpath=CLASSPATH,
         jvm_opts=os.environ.get("KAFKA_OPTS") or "",
         bootstrap_broker_list=bootstrap_broker_list,
         expected_brokers=expected_brokers,
@@ -291,7 +291,8 @@ def main():
     if args.action == "zk-ready":
         success = check_zookeeper_ready(args.connect_string, int(args.timeout))
     elif args.action == "kafka-ready":
-        success = check_kafka_ready(int(args.expected_brokers), int(args.timeout), args.config, args.bootstrap_broker_list, args.zookeeper_connect, args.security_protocol)
+        success = check_kafka_ready(int(args.expected_brokers), int(args.timeout), args.config, args.bootstrap_broker_list, args.zookeeper_connect,
+                                    args.security_protocol)
     elif args.action == "sr-ready":
         success = check_schema_registry_ready(args.host, args.port, int(args.timeout))
     elif args.action == "kr-ready":
