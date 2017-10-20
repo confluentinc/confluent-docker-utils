@@ -84,7 +84,7 @@ def check_zookeeper_ready(connect_string, timeout):
     """
     cmd_template = """
              java {jvm_opts} \
-                 -cp {classpath}" \
+                 -cp {classpath} \
                  io.confluent.admin.utils.cli.ZookeeperReadyCommand \
                  {connect_string} \
                  {timeout_in_ms}"""
