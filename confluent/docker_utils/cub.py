@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2016 Confluent Inc.
+# Copyright 2017 Confluent Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ The script supports following commands:
 3. sr-ready: Ensures that Schema Registry is ready to accept client requests.
 4. kr-ready: Ensures that Kafka REST Proxy is ready to accept client requests.
 5. listeners: Derives the listeners property from advertised.listeners.
+6. ensure-topic: Ensure that topic exists and is vaild.
 
 These commands log any output to stderr and returns with exitcode 0 if successful, 1 otherwise.
 
@@ -248,6 +249,45 @@ def get_kafka_listeners(advertised_listeners):
     return host.sub(r'://0.0.0.0:', advertised_listeners)
 
 
+def ensure_topic(config, file, timeout, create_if_not_exists):
+    """Ensures that the topic in the file exists on the cluster and has valid config.
+
+
+    Args:
+        config: client config (properties file).
+        timeout: Time in secs for all operations.
+        file: YAML file with topic config.
+        create_if_not_exists: Creates topics if they dont exist.
+
+    Returns:
+        False, if the timeout expires and Kafka cluster is unreachable, True otherwise.
+
+    """
+    cmd_template = """
+             java {jvm_opts} \
+                 -cp {classpath} \
+                 io.confluent.admin.utils.cli.TopicEnsureCommand \
+                 --config {config} \
+                 --file {file} \
+                 --create-if-not-exists {create_if_not_exists} \
+                 --timeout {timeout_in_ms}"""
+
+    cmd = cmd_template.format(
+        classpath=CLASSPATH,
+        jvm_opts=os.environ.get("KAFKA_OPTS") or "",
+        config=config,
+        file=file,
+        timeout_in_ms=timeout * 1000,
+        create_if_not_exists=create_if_not_exists)
+
+    exit_code = subprocess.call(cmd, shell=True)
+
+    if exit_code == 0:
+        return True
+    else:
+        return False
+
+
 def main():
     import argparse
     root = argparse.ArgumentParser(description='Confluent Platform Utility Belt.')
@@ -280,6 +320,12 @@ def main():
     config = actions.add_parser('listeners', description='Get listeners value from advertised.listeners. Replaces host to 0.0.0.0')
     config.add_argument('advertised_listeners', help='advertised.listeners string.')
 
+    te = actions.add_parser('ensure-topic', description='Ensure that topic exists and is valid.')
+    te.add_argument('config', help='client config (properties file).')
+    te.add_argument('file', help='YAML file with topic config.')
+    te.add_argument('timeout', help='Time in secs for all operations.', type=int)
+    te.add_argument('--create_if_not_exists', help='Create topics if they do not yet exist.', action='store_true')
+
     if len(sys.argv) < 2:
         root.print_help()
         sys.exit(1)
@@ -297,6 +343,8 @@ def main():
         success = check_schema_registry_ready(args.host, args.port, int(args.timeout))
     elif args.action == "kr-ready":
         success = check_kafka_rest_ready(args.host, args.port, int(args.timeout))
+    elif args.action == "ensure-topic":
+        success = ensure_topic(args.config, args.file, int(args.timeout), args.create_if_not_exists)
     elif args.action == "listeners":
         listeners = get_kafka_listeners(args.advertised_listeners)
         if listeners:

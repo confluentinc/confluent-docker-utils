@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2016 Confluent Inc.
+# Copyright 2017 Confluent Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ def env_to_props(env_prefix, prop_prefix, exclude=[]):
         Map of matching properties.
     """
     props = {}
-    for (env_name, val) in os.environ.iteritems():
+    for (env_name, val) in os.environ.items():
         if env_name not in exclude and env_name.startswith(env_prefix):
             prop_name = prop_prefix + '.'.join(env_name[len(env_prefix):].lower().split('_'))
             props[prop_name] = val
