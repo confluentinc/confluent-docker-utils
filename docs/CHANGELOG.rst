@@ -1,5 +1,12 @@
-Version 0.0.16
+Version 0.0.17
 ================================================================================
+
+* Revert "Bump requests dependency"
+  
+  This reverts commit fe4b6bd1e0adf12ee4cd9a1b9adb0ef424af745c.
+
+Version 0.0.16
+--------------------------------------------------------------------------------
 
 * Merge branch 'master' of github.com:confluentinc/confluent-docker-utils
 * Bump requests dependency
