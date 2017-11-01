@@ -1,5 +1,11 @@
-Version 0.0.15
+Version 0.0.16
 ================================================================================
+
+* Merge branch 'master' of github.com:confluentinc/confluent-docker-utils
+* Bump requests dependency
+
+Version 0.0.15
+--------------------------------------------------------------------------------
 
 * let each image set CUB_CLASSPATH
 
