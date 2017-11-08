@@ -252,7 +252,7 @@ def fill_and_write_template(template_file, output_file, context=os.environ):
             f.write(template.render(env=context))
 
         return True
-    except Exception, e:
+    except Exception as e:
         print(e, file=sys.stderr)
         return False
 
