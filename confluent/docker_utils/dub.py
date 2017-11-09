@@ -38,8 +38,12 @@ from jinja2 import Environment, FileSystemLoader
 import requests
 import socket
 import time
-import urlparse
 import argparse
+
+try:  # Python 2 vs 3
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
 
 
 def env_to_props(env_prefix, prop_prefix, exclude=[]):
