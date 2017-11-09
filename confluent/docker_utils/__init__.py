@@ -24,7 +24,7 @@ def build_image(image_name, dockerfile_dir):
 
 def image_exists(image_name):
     client = docker.APIClient(base_url=DOCKER_HOST)
-    tags = [t for image in client.images() for t in image['RepoTags']]
+    tags = [t for image in client.images() for t in image['RepoTags'] or []]
     return image_name in tags
 
 
