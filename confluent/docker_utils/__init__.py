@@ -81,6 +81,10 @@ def run_cmd(command):
     return output
 
 
+def add_registry_and_tag(image):
+    return "{0}{1}:{2}".format(os.environ.get("DOCKER_REGISTRY", ""), image, os.environ.get("DOCKER_TAG", "latest"))
+
+
 class TestContainer(Container):
 
     def state(self):
