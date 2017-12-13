@@ -197,6 +197,30 @@ def check_path_for_permissions(path, mode):
     return os.access(path, string_to_mode_map[mode])
 
 
+def wait_for_path(path, timeout):
+    """Waits for a path on the filesystem to exist.
+
+    Useful to wait for a volume mount, such as Kubernetes ConfigMaps or Secrets for example.
+
+    Args:
+        path: Full unix path.
+        timeout: Time in secs to wait for the URL to be retrievable.
+
+    Returns:
+        False if the timeout expires and the path does not exist, True otherwise.
+    """
+    start = time.time()
+
+    while not os.path.exists(path):
+        time.sleep(1)
+
+        if time.time() - start > timeout:
+            print("%s does not exist" % path, file=sys.stderr)
+            return False
+
+    return True
+
+
 def exit_if_absent(env_var):
     """Check if an environment variable is absent.
 
@@ -289,6 +313,10 @@ def main():
     check_env.add_argument('path', help='Full path.')
     check_env.add_argument('mode', help='One of [writable, readable, executable, exists].', choices=['writable', 'readable', 'executable', 'exists'])
 
+    check_env = actions.add_parser('path-wait', description='Wait for a path to exist')
+    check_env.add_argument('path', help='Full path.')
+    check_env.add_argument('timeout', help='Time in secs to wait for the path to exist.', type=float)
+
     if len(sys.argv) < 2:
         root.print_help()
         sys.exit(1)
@@ -309,6 +337,8 @@ def main():
         success = check_http_ready(args.url, float(args.timeout))
     elif args.action == "path":
         success = check_path_for_permissions(args.path, args.mode)
+    elif args.action == "path-wait":
+        success = wait_for_path(args.path, float(args.timeout))
 
     if success:
         sys.exit(0)
