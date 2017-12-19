@@ -1,6 +1,6 @@
-from unittest.mock import patch
-
 import os
+
+from mock import patch
 
 import confluent.docker_utils as utils
 

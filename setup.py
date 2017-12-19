@@ -23,7 +23,7 @@ setuptools.setup(
 
     include_package_data=True,
 
-    python_requires='>=3.5',
+    python_requires='>=2.7',
     setup_requires=['setuptools-git'],
 
     entry_points={
