@@ -81,8 +81,25 @@ def run_cmd(command):
     return output
 
 
-def add_registry_and_tag(image):
-    return "{0}{1}:{2}".format(os.environ.get("DOCKER_REGISTRY", ""), image, os.environ.get("DOCKER_TAG", "latest"))
+def add_registry_and_tag(image, scope=""):
+    """
+    Fully qualify an image name. `scope` may be an empty
+    string, "UPSTREAM" for upstream dependencies, or "TEST"
+    for test dependencies. The injected values correspond to
+    DOCKER_(${scope}_)REGISTRY and DOCKER_(${scope}_)TAG environment
+    variables, which are set up by the Maven build.
+
+    :param str image: Image name, without registry prefix and tag postfix.
+    :param str scope:
+    """
+
+    if scope:
+        scope += "_"
+
+    return "{0}{1}:{2}".format(os.environ.get("DOCKER_{0}REGISTRY".format(scope), ""),
+                               image,
+                               os.environ.get("DOCKER_{0}TAG".format(scope), "latest")
+                               )
 
 
 class TestContainer(Container):
