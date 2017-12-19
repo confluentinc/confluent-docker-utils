@@ -1,5 +1,10 @@
-Version 0.0.22
+Version 0.0.23
 ================================================================================
+
+* let add_registry_and_tag be scoped to UPSTREAM or TAG dependencies (#3)
+
+Version 0.0.22
+--------------------------------------------------------------------------------
 
 * Add dub path-wait command (#2)
 
