@@ -1,5 +1,10 @@
-Version 0.0.23
+Version 0.0.24
 ================================================================================
+
+* port fixes from confluentinc/cp-docker-images#372 (#4)
+
+Version 0.0.23
+--------------------------------------------------------------------------------
 
 * let add_registry_and_tag be scoped to UPSTREAM or TAG dependencies (#3)
 
