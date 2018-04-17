@@ -1,12 +1,7 @@
-#!/usr/bin/env python
+from setuptools import setup
 
-from pip.req import parse_requirements
-import setuptools
 
-# Filters out relative/local requirements (i.e. ../lib/utils)
-remote_requirements = '\n'.join(str(r.req) for r in parse_requirements("requirements.txt", session='dummy') if r.req)
-
-setuptools.setup(
+setup(
     name='confluent-docker-utils',
     version='0.0.24',
 
@@ -17,7 +12,7 @@ setuptools.setup(
 
     url="https://github.com/confluentinc/confluent-docker-utils",
 
-    install_requires=remote_requirements,
+    install_requires=open('requirements.txt').read(),
 
     packages=['confluent'],
 
