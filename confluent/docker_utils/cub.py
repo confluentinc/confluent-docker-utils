@@ -266,7 +266,7 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
     cmd_template = """
              java {jvm_opts} \
                  -cp {classpath} \
-                 io.confluent.admin.utils.cli.TopicEnsureCommand \
+                 io.confluent.kafkaensure.cli.TopicEnsureCommand \
                  --config {config} \
                  --file {file} \
                  --create-if-not-exists {create_if_not_exists} \
