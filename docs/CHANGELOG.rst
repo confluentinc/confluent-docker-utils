@@ -1,5 +1,13 @@
-Version 0.0.25
+Version 0.0.26
 ================================================================================
+
+* Merge pull request #6 from confluentinc/fixensuretopic
+  
+  fix the classpath.
+* fix the classpath.
+
+Version 0.0.25
+--------------------------------------------------------------------------------
 
 * fix style
 * pip.req is not needed (#5)
