@@ -40,7 +40,7 @@ import re
 import requests
 import subprocess
 
-CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*"')
+CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"')
 
 
 def wait_for_service(host, port, timeout):
