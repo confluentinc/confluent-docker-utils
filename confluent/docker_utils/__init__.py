@@ -51,14 +51,14 @@ def path_exists_in_image(image, path):
     print("Checking for %s in %s" % (path, image))
     cmd = "bash -c '[ ! -e %s ] || echo success' " % (path,)
     output = run_docker_command(image=image, command=cmd)
-    return "success" in output
+    return b"success" in output
 
 
 def executable_exists_in_image(image, path):
     print("Checking for %s in %s" % (path, image))
     cmd = "bash -c '[ ! -x %s ] || echo success' " % (path,)
     output = run_docker_command(image=image, command=cmd)
-    return "success" in output
+    return b"success" in output
 
 
 def run_command_on_host(command):
