@@ -1,1 +1,3 @@
-python {}
+withDockerServer([uri: dockerHost()]) {
+   python {}
+}
