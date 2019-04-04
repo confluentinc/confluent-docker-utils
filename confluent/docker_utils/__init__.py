@@ -13,27 +13,27 @@ import subprocess
 
 def build_image(image_name, dockerfile_dir):
     print("Building image %s from %s" % (image_name, dockerfile_dir))
-    client = docker.APIClient(base_url=DOCKER_HOST)
+    client = docker.from_env().api
     output = client.build(dockerfile_dir, rm=True, tag=image_name)
     response = "".join(["     %s" % (line,) for line in output])
     print(response)
 
 
 def image_exists(image_name):
-    client = docker.from_env()
+    client = docker.from_env().api
     tags = [t for image in client.images() for t in image['RepoTags'] or []]
     return image_name in tags
 
 
 def pull_image(image_name):
-    client = docker.from_env()
+    client = docker.from_env().api
     if not image_exists(image_name):
         client.pull(image_name)
 
 
 def run_docker_command(timeout=None, **kwargs):
     pull_image(kwargs["image"])
-    client = docker.from_env()
+    client = docker.from_env().api
     kwargs["labels"] = {"io.confluent.docker.testing": "true"}
     container = TestContainer.create(client, **kwargs)
     container.start()
