@@ -31,7 +31,10 @@ def job = {
 
                   stage("Test") {
                      withDockerServer([uri: dockerHost()]) {
-                        sh 'tox'
+                        sh '''
+                          echo ${DOCKER_HOST}
+                          tox
+                        '''
                      }
                   }
 
