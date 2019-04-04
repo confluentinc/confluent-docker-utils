@@ -31,8 +31,17 @@ def job = {
 
                   stage("Test") {
                      withDockerServer([uri: dockerHost()]) {
+                        writeFile file:'extract-iam-credential.sh', text:libraryResource('scripts/extract-iam-credential.sh')
+
                         sh '''
-                          echo ${DOCKER_HOST}
+                            bash extract-iam-credential.sh
+                            # Hide login credential from below
+                            set +x
+                            LOGIN_CMD=$(aws ecr get-login --no-include-email --region us-west-2)
+                            $LOGIN_CMD
+                        '''
+                       
+                       sh '''
                           tox
                         '''
                      }
