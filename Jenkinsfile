@@ -43,7 +43,8 @@ def job = {
                             
                             # show commands again
                             set -x
-                            echo AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-}
+                            echo running tests
+                            echo AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION"
                             docker pull confluentinc/cp-base:latest
                             tox
                         '''
