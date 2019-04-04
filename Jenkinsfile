@@ -33,16 +33,20 @@ def job = {
 
                   stage("Test") {
                      withDockerServer([uri: dockerHost()]) {
-                        writeFile file:'extract-iam-credential.sh', text:libraryResource('scripts/extract-iam-credential.sh')
-
-                        sh '''
-                            bash extract-iam-credential.sh
-                            # Hide login credential from below
-                            set +x
-                            LOGIN_CMD=$(aws ecr get-login --no-include-email --region us-west-2)
-                            $LOGIN_CMD
-                            export DOCKER_REGISTRY="${config.dockerRegistry}"
-                        '''
+                        writeFile file:'extract-iam-credential.sh', text:libraryResource('scripts/extract-iam-credential.sh')                        
+                        withMaven(
+                            globalMavenSettingsConfig: 'jenkins-maven-global-settings',
+                            options: [findbugsPublisher(disabled: true)]
+                        ) {
+                          sh '''
+                              bash extract-iam-credential.sh
+                              # Hide login credential from below
+                              set +x
+                              LOGIN_CMD=$(aws ecr get-login --no-include-email --region us-west-2)
+                              $LOGIN_CMD
+                              export DOCKER_REGISTRY="${config.dockerRegistry}"
+                          '''
+                        }
                        
                         writeFile file:'create-pip-conf-with-nexus.sh', text:libraryResource('scripts/create-pip-conf-with-nexus.sh')
                         writeFile file:'create-pypirc-with-nexus.sh', text:libraryResource('scripts/create-pypirc-with-nexus.sh')
