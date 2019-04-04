@@ -40,8 +40,9 @@ def official_image():
     import boto3
     import base64
     import docker
-    session = boto3.Session()
-    ecr = session.client('ecr')
+    import os
+    assert os.getenv('AWS_DEFAULT_REGION') is not None
+    ecr = boto3.client('ecr')
     login = ecr.get_authorization_token()
     b64token = login['authorizationData'][0]['authorizationToken'].encode('utf-8')
     username, password = base64.b64decode(b64token).decode('utf-8').split(':')
