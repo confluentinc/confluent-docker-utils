@@ -1,5 +1,7 @@
 import os  # NOQA
 
+AWS_DEFAULT_REGION = os.getenv('AWS_DEFAULT_REGION')
+
 from mock import patch
 import pytest
 
@@ -41,6 +43,7 @@ def official_image():
     import base64
     import docker
     import os
+    print('AWS_DEFAULT_REGION=%s' % AWS_DEFAULT_REGION)
     assert os.getenv('AWS_DEFAULT_REGION') is not None
     ecr = boto3.client('ecr')
     login = ecr.get_authorization_token()
