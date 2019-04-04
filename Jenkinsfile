@@ -43,7 +43,22 @@ def job = {
                             $LOGIN_CMD
                         '''
                        
-                       sh '''
+                        writeFile file:'create-pip-conf-with-nexus.sh', text:libraryResource('scripts/create-pip-conf-with-nexus.sh')
+                        writeFile file:'create-pypirc-with-nexus.sh', text:libraryResource('scripts/create-pypirc-with-nexus.sh')
+                        writeFile file:'setup-credential-store.sh', text:libraryResource('scripts/setup-credential-store.sh')
+                        writeFile file:'set-global-user.sh', text:libraryResource('scripts/set-global-user.sh')
+                        sh '''
+                            bash create-pip-conf-with-nexus.sh
+                            bash create-pypirc-with-nexus.sh
+                            bash setup-credential-store.sh
+                            bash set-global-user.sh
+                        '''
+
+                        sh '''
+                          docker pull confluentinc/cp-base:latest
+                        '''
+
+                        sh '''
                           tox
                         '''
                      }
