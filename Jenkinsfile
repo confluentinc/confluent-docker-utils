@@ -4,7 +4,7 @@ def defaultConfig = [
   runMergeCheck: false,  // Python tooling is strictly trunk dev
   testResultSpecs: ['junit': 'test/results.xml']
 ]
-def config = jobConfig(body, defaultConfig)
+def config = jobConfig({}, defaultConfig)
 
 def job = {
   withCredentials([
