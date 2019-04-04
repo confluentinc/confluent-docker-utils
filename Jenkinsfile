@@ -1,5 +1,7 @@
 def defaultConfig = [
   owner: 'tools',
+  nodeLabel: 'docker-oraclejdk8-compose',
+  dockerPush: false,
   slackChannel: 'tools-eng',
   runMergeCheck: false,  // Python tooling is strictly trunk dev
   testResultSpecs: ['junit': 'test/results.xml']
