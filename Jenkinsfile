@@ -34,36 +34,17 @@ def job = {
                   stage("Test") {
                      withDockerServer([uri: dockerHost()]) {
                         writeFile file:'extract-iam-credential.sh', text:libraryResource('scripts/extract-iam-credential.sh')                        
-                        withMaven(
-                            globalMavenSettingsConfig: 'jenkins-maven-global-settings',
-                            options: [findbugsPublisher(disabled: true)]
-                        ) {
-                          sh '''
-                              bash extract-iam-credential.sh
-                              # Hide login credential from below
-                              set +x
-                              LOGIN_CMD=$(aws ecr get-login --no-include-email --region us-west-2)
-                              $LOGIN_CMD
-                          '''
-                        }
-                       
-                        writeFile file:'create-pip-conf-with-nexus.sh', text:libraryResource('scripts/create-pip-conf-with-nexus.sh')
-                        writeFile file:'create-pypirc-with-nexus.sh', text:libraryResource('scripts/create-pypirc-with-nexus.sh')
-                        writeFile file:'setup-credential-store.sh', text:libraryResource('scripts/setup-credential-store.sh')
-                        writeFile file:'set-global-user.sh', text:libraryResource('scripts/set-global-user.sh')
                         sh '''
-                            bash create-pip-conf-with-nexus.sh
-                            bash create-pypirc-with-nexus.sh
-                            bash setup-credential-store.sh
-                            bash set-global-user.sh
-                        '''
-
-                        sh '''
-                          docker pull confluentinc/cp-base:latest
-                        '''
-
-                        sh '''
-                          tox
+                            bash extract-iam-credential.sh
+                            # Hide login credential from below
+                            set +x
+                            LOGIN_CMD=$(aws ecr get-login --no-include-email --region us-west-2)
+                            $LOGIN_CMD
+                            
+                            # show commands again
+                            set -x
+                            docker pull confluentinc/cp-base:latest
+                            tox
                         '''
                      }
                   }
