@@ -1,9 +1,12 @@
 import os  # NOQA
-import unittest
 
 from mock import patch
+import pytest
 
 import confluent.docker_utils as utils
+
+
+OFFICIAL_IMAGE = "confluentinc/cp-base:latest"
 
 
 def test_imports():
@@ -31,26 +34,37 @@ def test_add_registry_and_tag():
         assert utils.add_registry_and_tag(base_image, scope="TEST") == 'test-registry/confluentinc/example:test-tag'
 
 
-class IntegrationTest(unittest.TestCase):
-    official_image = "confluentinc/cp-base:latest"
+@pytest.fixture(scope="module")
+def official_image():
+    # docker-py #1677
+    import boto3
+    import base64
+    import docker
+    session = boto3.Session()
+    ecr = session.client('ecr')
+    login = ecr.get_authorization_token()
+    b64token = login['authorizationData'][0]['authorizationToken'].encode('utf-8')
+    username, password = base64.b64decode(b64token).decode('utf-8').split(':')
+    registry = login['authorizationData'][0]['proxyEndpoint']
+    client = docker.from_env()
+    client.login(username, password, registry=registry)
+    utils.pull_image(OFFICIAL_IMAGE)
 
-    @classmethod
-    def setUpClass(cls):
-        import docker
-        # load existing config.
-        docker.from_env().api.reload_config()
-        # pulls official image, used for the other tests.
-        utils.pull_image(cls.official_image)
 
-    def test_image_exists(self):
-        self.assertTrue(utils.image_exists(self.official_image))
+@pytest.mark.integration
+def test_image_exists(official_image):
+    assert utils.image_exists(OFFICIAL_IMAGE)
 
-    def test_path_exists_in_image(self):
-        self.assertTrue(utils.path_exists_in_image(self.official_image, "/usr/local/bin/dub"))
-        self.assertTrue(utils.path_exists_in_image(self.official_image, "/usr/local/bin/cub"))
 
-    def test_run_docker_command(self):
-        cmd = "java -version"
-        expected = b'OpenJDK Runtime Environment (Zulu 8.'
-        output = utils.run_docker_command(image=self.official_image, command=cmd)
-        self.assertTrue(expected in output)
+@pytest.mark.integration
+def test_path_exists_in_image(official_image):
+    assert utils.path_exists_in_image(OFFICIAL_IMAGE, "/usr/local/bin/dub")
+    assert utils.path_exists_in_image(OFFICIAL_IMAGE, "/usr/local/bin/cub")
+
+
+@pytest.mark.integration
+def test_run_docker_command(official_image):
+    cmd = "java -version"
+    expected = b'OpenJDK Runtime Environment (Zulu 8.'
+    output = utils.run_docker_command(image=OFFICIAL_IMAGE, command=cmd)
+    assert expected in output
