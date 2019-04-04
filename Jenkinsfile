@@ -44,7 +44,6 @@ def job = {
                               set +x
                               LOGIN_CMD=$(aws ecr get-login --no-include-email --region us-west-2)
                               $LOGIN_CMD
-                              export DOCKER_REGISTRY="${config.dockerRegistry}"
                           '''
                         }
                        
