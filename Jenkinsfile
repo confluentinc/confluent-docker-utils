@@ -36,6 +36,8 @@ def job = {
                         writeFile file:'extract-iam-credential.sh', text:libraryResource('scripts/extract-iam-credential.sh')                        
                         sh '''
                             bash extract-iam-credential.sh
+                            echo AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION"
+
                             # Hide login credential from below
                             set +x
                             LOGIN_CMD=$(aws ecr get-login --no-include-email --region us-west-2)
