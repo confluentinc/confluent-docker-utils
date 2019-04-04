@@ -36,6 +36,9 @@ class IntegrationTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        import docker
+        # load existing config.
+        docker.from_env().api.reload_config()
         # pulls official image, used for the other tests.
         utils.pull_image(cls.official_image)
 
