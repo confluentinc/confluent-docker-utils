@@ -34,8 +34,8 @@ def job = {
                   stage("Test") {
                      withDockerServer([uri: dockerHost()]) {
                         writeFile file:'extract-iam-credential.sh', text:libraryResource('scripts/extract-iam-credential.sh')                        
-                        sh '''
-                            bash extract-iam-credential.sh
+                        sh '''#!/bin/bash
+                            source extract-iam-credential.sh
                             echo AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION"
 
                             # Hide login credential from below
