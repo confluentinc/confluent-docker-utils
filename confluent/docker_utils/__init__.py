@@ -11,9 +11,6 @@ from compose.config.environment import Environment
 import subprocess
 
 
-DOCKER_HOST = os.environ.get("DOCKER_HOST", 'unix://var/run/docker.sock')
-
-
 def build_image(image_name, dockerfile_dir):
     print("Building image %s from %s" % (image_name, dockerfile_dir))
     client = docker.APIClient(base_url=DOCKER_HOST)
@@ -23,20 +20,20 @@ def build_image(image_name, dockerfile_dir):
 
 
 def image_exists(image_name):
-    client = docker.APIClient(base_url=DOCKER_HOST)
+    client = docker.from_env()
     tags = [t for image in client.images() for t in image['RepoTags'] or []]
     return image_name in tags
 
 
 def pull_image(image_name):
-    client = docker.APIClient(base_url=DOCKER_HOST)
+    client = docker.from_env()
     if not image_exists(image_name):
         client.pull(image_name)
 
 
 def run_docker_command(timeout=None, **kwargs):
     pull_image(kwargs["image"])
-    client = docker.APIClient(base_url=DOCKER_HOST)
+    client = docker.from_env()
     kwargs["labels"] = {"io.confluent.docker.testing": "true"}
     container = TestContainer.create(client, **kwargs)
     container.start()
