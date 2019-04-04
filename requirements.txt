@@ -1,5 +1,5 @@
-docker==2.5.1
-docker-compose==1.16.1
+docker==3.7.2
+docker-compose==1.24.0
 Jinja2==2.9.6
 mock==2.0.0
-requests!=2.11.0,<2.12,>=2.6.1
+requests==2.20.0
