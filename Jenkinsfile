@@ -1,7 +1,7 @@
 def defaultConfig = [
   owner: 'tools',
   nodeLabel: 'docker-oraclejdk8-compose',
-  dockerPush: false,
+  usesDockerForTesting: true,
   slackChannel: 'tools-eng',
   runMergeCheck: false,  // Python tooling is strictly trunk dev
   testResultSpecs: ['junit': 'test/results.xml']
@@ -31,26 +31,26 @@ def job = {
 
                   }
 
-                  stage("Test") {
-                     withDockerServer([uri: dockerHost()]) {
-                        writeFile file:'extract-iam-credential.sh', text:libraryResource('scripts/extract-iam-credential.sh')                        
-                        sh '''#!/bin/bash
-                            source extract-iam-credential.sh
-                            echo AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION"
+                  stage('Test') {
+                      if (config.usesDockerForTesting) {
+                          withDockerServer([uri: dockerHost()]) {
+                              writeFile file:'extract-iam-credential.sh', text:libraryResource('scripts/extract-iam-credential.sh')                        
+                              sh '''#!/bin/bash
+                                  bash extract-iam-credential.sh
 
-                            # Hide login credential from below
-                            set +x
-                            LOGIN_CMD=$(aws ecr get-login --no-include-email --region us-west-2)
-                            $LOGIN_CMD
-                            
-                            # show commands again
-                            set -x
-                            echo running tests
-                            echo AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION"
-                            docker pull confluentinc/cp-base:latest
-                            tox
-                        '''
-                     }
+                                  # Hide login credential from below
+                                  set +x
+                                  $(aws ecr get-login --no-include-email --region us-west-2)
+
+                                  # show commands again
+                                  set -x
+                                  echo Running tests
+                                  tox
+                              '''
+                          }
+                      } else {
+                          sh 'tox'
+                      }
                   }
 
                   if (config.publish && config.isDevJob) {
