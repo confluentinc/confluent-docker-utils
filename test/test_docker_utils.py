@@ -1,7 +1,5 @@
 import os  # NOQA
 
-AWS_DEFAULT_REGION = os.getenv('AWS_DEFAULT_REGION')
-
 from mock import patch
 import pytest
 
@@ -37,21 +35,14 @@ def test_add_registry_and_tag():
 
 
 @pytest.fixture(scope="module")
-def official_image():
-    # docker-py #1677
-    import boto3
-    import base64
-    import docker
-    import os
-    print('AWS_DEFAULT_REGION=%s' % AWS_DEFAULT_REGION)
-    assert os.getenv('AWS_DEFAULT_REGION') is not None
-    ecr = boto3.client('ecr')
-    login = ecr.get_authorization_token()
-    b64token = login['authorizationData'][0]['authorizationToken'].encode('utf-8')
-    username, password = base64.b64decode(b64token).decode('utf-8').split(':')
-    registry = login['authorizationData'][0]['proxyEndpoint']
-    client = docker.from_env()
-    client.login(username, password, registry=registry)
+def ecr_login():
+    # in AWS env, do a login.
+    if os.getenv('AWS_DEFAULT_REGION') is not None:
+        utils.ecr_login()
+
+
+@pytest.fixture(scope="module")
+def official_image(ecr_login):
     utils.pull_image(OFFICIAL_IMAGE)
 
 

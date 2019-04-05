@@ -1,6 +1,9 @@
-import docker
+import base64
 import os
+import subprocess
 
+import boto3
+import docker
 from compose.config.config import ConfigDetails, ConfigFile, load
 from compose.container import Container
 from compose.project import Project
@@ -8,32 +11,45 @@ from compose.service import ImageType
 from compose.cli.docker_client import docker_client
 from compose.config.environment import Environment
 
-import subprocess
+
+def api_client():
+    return docker.from_env().api
+
+
+def ecr_login():
+    # see docker/docker-py#1677
+    ecr = boto3.client('ecr')
+    login = ecr.get_authorization_token()
+    b64token = login['authorizationData'][0]['authorizationToken'].encode('utf-8')
+    username, password = base64.b64decode(b64token).decode('utf-8').split(':')
+    registry = login['authorizationData'][0]['proxyEndpoint']
+    client = docker.from_env()
+    client.login(username, password, registry=registry)
 
 
 def build_image(image_name, dockerfile_dir):
     print("Building image %s from %s" % (image_name, dockerfile_dir))
-    client = docker.from_env().api
+    client = api_client()
     output = client.build(dockerfile_dir, rm=True, tag=image_name)
     response = "".join(["     %s" % (line,) for line in output])
     print(response)
 
 
 def image_exists(image_name):
-    client = docker.from_env().api
+    client = api_client()
     tags = [t for image in client.images() for t in image['RepoTags'] or []]
     return image_name in tags
 
 
 def pull_image(image_name):
-    client = docker.from_env().api
+    client = api_client()
     if not image_exists(image_name):
         client.pull(image_name)
 
 
 def run_docker_command(timeout=None, **kwargs):
     pull_image(kwargs["image"])
-    client = docker.from_env().api
+    client = api_client()
     kwargs["labels"] = {"io.confluent.docker.testing": "true"}
     container = TestContainer.create(client, **kwargs)
     container.start()
