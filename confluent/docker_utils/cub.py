@@ -27,6 +27,7 @@ The script supports following commands:
 4. kr-ready: Ensures that Kafka REST Proxy is ready to accept client requests.
 5. listeners: Derives the listeners property from advertised.listeners.
 6. ensure-topic: Ensure that topic exists and is vaild.
+7. connect-ready : Ensures a Connect cluster is ready to accept connector tasks.
 
 These commands log any output to stderr and returns with exitcode 0 if successful, 1 otherwise.
 
@@ -229,6 +230,37 @@ def check_kafka_rest_ready(host, port, service_timeout):
         return False
 
 
+def check_connect_ready(host, port, service_timeout):
+    """Waits for Connect to be ready.
+
+    Args:
+        host: Hostname where Connect worker is hosted.
+        port: Connect port.
+        timeout: Time in secs to wait for the service to be available.
+
+    Returns:
+        False, if the timeout expires and Connect is not ready, True otherwise.
+
+    """
+
+    # Check if you can connect to the endpoint
+    status = wait_for_service(host, port, service_timeout)
+
+    if status:
+        # Check if service is responding as expected to basic request
+        url = "http://%s:%s" % (host, port)
+        r = requests.get(url)
+        # The call should always return the compatibilityLevel
+        if r.status_code // 100 == 2 and 'version' in str(r.text):
+            return True
+        else:
+            print("Unexpected response with code: %s and content: %s" % (str(r.status_code), str(r.text)), file=sys.stderr)
+            return False
+    else:
+        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        return False
+
+
 def get_kafka_listeners(advertised_listeners):
     """Derives listeners property from advertised.listeners. It just converts the
        hostname to 0.0.0.0 so that Kafka process listens to all the interfaces.
@@ -326,6 +358,12 @@ def main():
     te.add_argument('timeout', help='Time in secs for all operations.', type=int)
     te.add_argument('--create_if_not_exists', help='Create topics if they do not yet exist.', action='store_true')
 
+    cr = actions.add_parser('connect-ready', description='Check if Connect is ready.')
+    cr.add_argument('host', help='Hostname for Connect worker.')
+    cr.add_argument('port', help='Port for Connect worker.')
+    cr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+
+
     if len(sys.argv) < 2:
         root.print_help()
         sys.exit(1)
@@ -343,6 +381,8 @@ def main():
         success = check_schema_registry_ready(args.host, args.port, int(args.timeout))
     elif args.action == "kr-ready":
         success = check_kafka_rest_ready(args.host, args.port, int(args.timeout))
+    elif args.action == "connect-ready":
+        success = check_connect_ready(args.host, args.port, int(args.timeout))
     elif args.action == "ensure-topic":
         success = ensure_topic(args.config, args.file, int(args.timeout), args.create_if_not_exists)
     elif args.action == "listeners":
