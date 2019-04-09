@@ -250,7 +250,7 @@ def check_connect_ready(host, port, service_timeout):
         # Check if service is responding as expected to basic request
         url = "http://%s:%s" % (host, port)
         r = requests.get(url)
-        # The call should always return the compatibilityLevel
+        # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'version' in str(r.text):
             return True
         else:
