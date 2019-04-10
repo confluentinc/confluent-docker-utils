@@ -1,14 +1,3 @@
-Version 0.0.27
-================================================================================
-
-* Merge pull request #7 from maxzheng/add-cp-base@master
-  
-  Add cp-base-new to the classpath
-* Add cp-base-new to the classpath
-  
-  It has been renamed to cp-base-new in common-docker, and so we need to
-  support both old and new paths.
-
 Version 0.0.29
 --------------------------------------------------------------------------------
 
