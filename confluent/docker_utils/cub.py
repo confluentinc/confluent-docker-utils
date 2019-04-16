@@ -281,7 +281,7 @@ def check_ksql_server_ready(host, port, service_timeout):
 
     if status:
         # Check if service is responding as expected to basic request
-        url = "http://%s:%s" % (host, port)
+        url = "http://%s:%s/info" % (host, port)
         r = requests.get(url)
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'version' in str(r.text):
