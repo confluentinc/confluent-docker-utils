@@ -28,6 +28,8 @@ The script supports following commands:
 5. listeners: Derives the listeners property from advertised.listeners.
 6. ensure-topic: Ensure that topic exists and is vaild.
 7. connect-ready : Ensures a Connect cluster is ready to accept connector tasks.
+8. ksql-server-ready : Ensures a KSQL server cluster is ready to accept KSQL queries.
+9. control-center-ready : Ensures Confluent Control Center UI is ready.
 
 These commands log any output to stderr and returns with exitcode 0 if successful, 1 otherwise.
 
@@ -261,6 +263,68 @@ def check_connect_ready(host, port, service_timeout):
         return False
 
 
+def check_ksql_server_ready(host, port, service_timeout):
+    """Waits for KSQL server to be ready.
+
+    Args:
+        host: Hostname where KSQL server is hosted.
+        port: KSQL server port.
+        timeout: Time in secs to wait for the service to be available.
+
+    Returns:
+        False, if the timeout expires and KSQL server is not ready, True otherwise.
+
+    """
+
+    # Check if you can connect to the endpoint
+    status = wait_for_service(host, port, service_timeout)
+
+    if status:
+        # Check if service is responding as expected to basic request
+        url = "http://%s:%s/info" % (host, port)
+        r = requests.get(url)
+        # The call should always return a json string including version
+        if r.status_code // 100 == 2 and 'Ksql' in str(r.text):
+            return True
+        else:
+            print("Unexpected response with code: %s and content: %s" % (str(r.status_code), str(r.text)), file=sys.stderr)
+            return False
+    else:
+        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        return False
+
+
+def check_control_center_ready(host, port, service_timeout):
+    """Waits for Confluent Control Center to be ready.
+
+    Args:
+        host: Hostname where Control Center is hosted.
+        port: Control Center port.
+        timeout: Time in secs to wait for the service to be available.
+
+    Returns:
+        False, if the timeout expires and Connect is not ready, True otherwise.
+
+    """
+
+    # Check if you can connect to the endpoint
+    status = wait_for_service(host, port, service_timeout)
+
+    if status:
+        # Check if service is responding as expected to basic request
+        url = "http://%s:%s" % (host, port)
+        r = requests.get(url)
+        # The call should always return a json string including version
+        if r.status_code // 100 == 2 and 'Control Center' in str(r.text):
+            return True
+        else:
+            print("Unexpected response with code: %s and content: %s" % (str(r.status_code), str(r.text)), file=sys.stderr)
+            return False
+    else:
+        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        return False
+
+
 def get_kafka_listeners(advertised_listeners):
     """Derives listeners property from advertised.listeners. It just converts the
        hostname to 0.0.0.0 so that Kafka process listens to all the interfaces.
@@ -363,6 +427,15 @@ def main():
     cr.add_argument('port', help='Port for Connect worker.')
     cr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
 
+    ksqlr = actions.add_parser('ksql-server-ready', description='Check if KSQL server is ready.')
+    ksqlr.add_argument('host', help='Hostname for KSQL server.')
+    ksqlr.add_argument('port', help='Port for KSQL server.')
+    ksqlr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+
+    c3r = actions.add_parser('control-center-ready', description='Check if Confluent Control Center is ready.')
+    c3r.add_argument('host', help='Hostname for Control Center.')
+    c3r.add_argument('port', help='Port for Control Center.')
+    c3r.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
 
     if len(sys.argv) < 2:
         root.print_help()
@@ -383,6 +456,10 @@ def main():
         success = check_kafka_rest_ready(args.host, args.port, int(args.timeout))
     elif args.action == "connect-ready":
         success = check_connect_ready(args.host, args.port, int(args.timeout))
+    elif args.action == "ksql-server-ready":
+        success = check_ksql_server_ready(args.host, args.port, int(args.timeout))
+    elif args.action == "control-center-ready":
+        success = check_control_center_ready(args.host, args.port, int(args.timeout))
     elif args.action == "ensure-topic":
         success = ensure_topic(args.config, args.file, int(args.timeout), args.create_if_not_exists)
     elif args.action == "listeners":
