@@ -1,3 +1,15 @@
+Version 0.0.32
+--------------------------------------------------------------------------------
+
+* Merge pull request #12 from confluentinc/ST-1340.
+
+* For KSQL server, change match string from version to Ksql.
+
+* Add info to KSQL server path.
+
+* ST-1340: added ksql-server-ready and control-center-ready.
+
+
 Version 0.0.31
 --------------------------------------------------------------------------------
 
