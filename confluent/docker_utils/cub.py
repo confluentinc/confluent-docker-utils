@@ -345,7 +345,7 @@ def get_kafka_listeners(advertised_listeners):
     return host.sub(r'://0.0.0.0:', advertised_listeners)
 
 
-def ensure_topic(config, file, timeout, create_if_not_exists):
+def ensure_topic(config, file, timeout, create_if_not_exists, validate_topic):
     """Ensures that the topic in the file exists on the cluster and has valid config.
 
 
@@ -354,6 +354,7 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
         timeout: Time in secs for all operations.
         file: YAML file with topic config.
         create_if_not_exists: Creates topics if they dont exist.
+        validate_topic: validates the topic configuration.
 
     Returns:
         False, if the timeout expires and Kafka cluster is unreachable, True otherwise.
@@ -366,6 +367,7 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
                  --config {config} \
                  --file {file} \
                  --create-if-not-exists {create_if_not_exists} \
+                 --validate-topic {validate_topic} \
                  --timeout {timeout_in_ms}"""
 
     cmd = cmd_template.format(
@@ -374,7 +376,8 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
         config=config,
         file=file,
         timeout_in_ms=timeout * 1000,
-        create_if_not_exists=create_if_not_exists)
+        create_if_not_exists=create_if_not_exists,
+        validate_topic=validate_topic)
 
     exit_code = subprocess.call(cmd, shell=True)
 
@@ -421,6 +424,7 @@ def main():
     te.add_argument('file', help='YAML file with topic config.')
     te.add_argument('timeout', help='Time in secs for all operations.', type=int)
     te.add_argument('--create_if_not_exists', help='Create topics if they do not yet exist.', action='store_true')
+    te.add_argument('--validate_topic', help='Validate the topic configuration.')
 
     cr = actions.add_parser('connect-ready', description='Check if Connect is ready.')
     cr.add_argument('host', help='Hostname for Connect worker.')
@@ -461,7 +465,7 @@ def main():
     elif args.action == "control-center-ready":
         success = check_control_center_ready(args.host, args.port, int(args.timeout))
     elif args.action == "ensure-topic":
-        success = ensure_topic(args.config, args.file, int(args.timeout), args.create_if_not_exists)
+        success = ensure_topic(args.config, args.file, int(args.timeout), args.create_if_not_exists, args.validate_topic)
     elif args.action == "listeners":
         listeners = get_kafka_listeners(args.advertised_listeners)
         if listeners:
