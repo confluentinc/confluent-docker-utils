@@ -50,11 +50,15 @@ except ImportError:
 def env_to_props(env_prefix, prop_prefix, exclude=[]):
     """Converts environment variables with a prefix into key/value properties
         in order to support wildcard handling of properties.  Naming convention
-        is to convert env vars to lower case and replace '_' with '.'
+        is to convert env vars to lower case and replace '_' with '.'.
+        Additionally, two underscores '__' are replaced with a single underscore '_'
+        and three underscores '___' are replaced with a dash '-'.
 
     For example: if these are set in the environment
         CONTROL_CENTER_STREAMS_NUM_STREAM_THREADS=4
         CONTROL_CENTER_STREAMS_SECURITY_PROTOCOL=SASL_SSL
+        CONTROL_CENTER_STREAMS_WITH__UNDERSCORE=foo
+        CONTROL_CENTER_STREAMS_WITH___DASH=bar
         CONTROL_CENTER_STREAMS_SASL_KERBEROS_SERVICE_NAME=kafka
 
         then
@@ -62,6 +66,8 @@ def env_to_props(env_prefix, prop_prefix, exclude=[]):
         will produce
             {
                 'confluent.controlcenter.streams.security.protocol': 'SASL_SSL',
+                'confluent.controlcenter.streams.with_underscore': 'foo',
+                'confluent.controlcenter.streams.with_dash': 'bar',
                 'confluent.controlcenter.streams.sasl.kerberos.service.name': 'kafka'
             }
 
