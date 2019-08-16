@@ -39,7 +39,11 @@ def test_env_to_props():
     fake_environ = {
         "KAFKA_FOO": "foo",
         "KAFKA_FOO_BAR": "bar",
-        "KAFKA_IGNORED": "ignored"
+        "KAFKA_IGNORED": "ignored",
+        "KAFKA_WITH__UNDERSCORE": "with underscore",
+        "KAFKA_WITH__UNDERSCORE_AND_MORE": "with underscore and more",
+        "KAFKA_WITH___DASH": "with dash",
+        "KAFKA_WITH___DASH_AND_MORE": "with dash and more"
     }
 
     with patch.dict('os.environ', fake_environ):
@@ -47,6 +51,10 @@ def test_env_to_props():
         assert "kafka.foo" in result
         assert "kafka.foo.bar" in result
         assert "kafka.ignored" not in result
+        assert "kafka.with_underscore" in result
+        assert "kafka.with_underscore.and.more" in result
+        assert "kafka.with-dash" in result
+        assert "kafka.with-dash.and.more" in result
 
 @pytest.fixture(scope="module")
 def ecr_login():

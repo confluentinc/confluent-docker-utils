@@ -38,6 +38,7 @@ from jinja2 import Environment, FileSystemLoader
 import requests
 import socket
 import time
+import re
 import argparse
 
 try:  # Python 2 vs 3
@@ -74,8 +75,14 @@ def env_to_props(env_prefix, prop_prefix, exclude=[]):
     """
     props = {}
     for (env_name, val) in os.environ.items():
+        pattern = re.compile('(?<=[^_])_(?=[^_])')
+
         if env_name not in exclude and env_name.startswith(env_prefix):
-            prop_name = prop_prefix + '.'.join(env_name[len(env_prefix):].lower().split('_'))
+            raw_name = env_name[len(env_prefix):].lower()
+            prop_dot = '.'.join(pattern.split(raw_name))
+            prop_dash = '-'.join(prop_dot.split('___'))
+            prop_underscore = '_'.join(prop_dash.split('__'))
+            prop_name = prop_prefix + prop_underscore
             props[prop_name] = val
     return props
 
