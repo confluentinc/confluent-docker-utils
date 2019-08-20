@@ -81,6 +81,11 @@ def env_to_props(env_prefix, prop_prefix, exclude=[]):
     """
     props = {}
     for (env_name, val) in os.environ.items():
+        # Regular expression explanation:
+        #  Start with NOT underscore (without being part of the match)
+        #  Underscore (matched)
+        #  End with NOT underscore (without being part of the match)
+        # Matches X_X, but not Y__Y or Z___Z
         pattern = re.compile('(?<=[^_])_(?=[^_])')
 
         if env_name not in exclude and env_name.startswith(env_prefix):
