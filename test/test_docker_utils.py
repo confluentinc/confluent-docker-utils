@@ -4,6 +4,7 @@ from mock import patch
 import pytest
 
 import confluent.docker_utils as utils
+import confluent.docker_utils.dub as dub
 
 
 OFFICIAL_IMAGE = "confluentinc/cp-base:latest"
@@ -33,6 +34,27 @@ def test_add_registry_and_tag():
         assert utils.add_registry_and_tag(base_image, scope="UPSTREAM") == 'upstream-registry/confluentinc/example:upstream-tag'
         assert utils.add_registry_and_tag(base_image, scope="TEST") == 'test-registry/confluentinc/example:test-tag'
 
+def test_env_to_props():
+
+    fake_environ = {
+        "KAFKA_FOO": "foo",
+        "KAFKA_FOO_BAR": "bar",
+        "KAFKA_IGNORED": "ignored",
+        "KAFKA_WITH__UNDERSCORE": "with underscore",
+        "KAFKA_WITH__UNDERSCORE_AND_MORE": "with underscore and more",
+        "KAFKA_WITH___DASH": "with dash",
+        "KAFKA_WITH___DASH_AND_MORE": "with dash and more"
+    }
+
+    with patch.dict('os.environ', fake_environ):
+        result = dub.env_to_props("KAFKA_", "kafka.", exclude = ["KAFKA_IGNORED"])
+        assert "kafka.foo" in result
+        assert "kafka.foo.bar" in result
+        assert "kafka.ignored" not in result
+        assert "kafka.with_underscore" in result
+        assert "kafka.with_underscore.and.more" in result
+        assert "kafka.with-dash" in result
+        assert "kafka.with-dash.and.more" in result
 
 @pytest.fixture(scope="module")
 def ecr_login():
