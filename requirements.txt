@@ -6,3 +6,4 @@ Jinja2==2.9.6
 mock==2.0.0
 requests==2.20.0
 cryptography==2.7
+six==1.14.0
