@@ -1,10 +1,9 @@
 boto3==1.9.128
-pyrsistent<0.17.0
 paramiko==2.4.2
 docker==3.7.2
 docker-compose==1.25.2
 Jinja2==2.11.2
 mock==2.0.0
-requests==2.20.0
+requests<=2.25.0
 cryptography>=2.6.1
 six==1.14.0
