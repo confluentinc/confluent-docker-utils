@@ -34,6 +34,22 @@ def test_add_registry_and_tag():
         assert utils.add_registry_and_tag(base_image, scope="UPSTREAM") == 'upstream-registry/confluentinc/example:upstream-tag'
         assert utils.add_registry_and_tag(base_image, scope="TEST") == 'test-registry/confluentinc/example:test-tag'
 
+def test_exit_if_all_absent():
+    """Should exit when none of enviroments are present"""
+
+    all_absent_envs = ["NOT_PRESENT_1", "NOT_PRESENT_2"]
+
+    with patch.dict("os.environ", {}):
+        assert dub.exit_if_all_absent(all_absent_envs) == False
+
+    fake_environ = {
+        all_absent_envs[0]: "PRESENT",
+    }
+
+    with patch.dict("os.environ", fake_environ):
+        assert dub.exit_if_all_absent(all_absent_envs)
+
+
 def test_env_to_props():
 
     fake_environ = {

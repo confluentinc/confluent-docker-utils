@@ -269,7 +269,7 @@ def exit_if_all_absent(env_vars):
         if os.environ.get(env_var):
             return True
     print("one of (%s) is required." % (",".join(env_vars),), file=sys.stderr)
-    return True
+    return False
 
 
 def fill_and_write_template(template_file, output_file, context=os.environ):
