@@ -1,7 +1,7 @@
 boto3~=1.17
 paramiko~=2.7
-docker~=4.4
-docker-compose~=1.28
+docker~=5.0
+docker-compose~=1.29
 Jinja2~=2.11
 mock~=4.0
 requests~=2.25
