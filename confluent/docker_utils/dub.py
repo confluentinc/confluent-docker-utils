@@ -67,7 +67,7 @@ def env_to_props(env_prefix, prop_prefix, exclude=[]):
             {
                 'confluent.controlcenter.streams.security.protocol': 'SASL_SSL',
                 'confluent.controlcenter.streams.with_underscore': 'foo',
-                'confluent.controlcenter.streams.with_dash': 'bar',
+                'confluent.controlcenter.streams.with-dash': 'bar',
                 'confluent.controlcenter.streams.sasl.kerberos.service.name': 'kafka'
             }
 
