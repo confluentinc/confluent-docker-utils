@@ -1,2 +1,5 @@
+boto3==1.17.112
+docker==4.4.4
+docker-compose==1.26.2
 Jinja2==2.11.3
 requests==2.26.0
