@@ -85,9 +85,7 @@ def __request(host, port, secure, ignore_cert, path = ""):
         Request result.
 
     """
-
     scheme = "https" if secure else "http"
-    # Check if service is responding as expected to basic request
     url = "%s://%s:%s/%s" % (scheme, host, port, path)
     return requests.get(url, verify = not ignore_cert)
 
