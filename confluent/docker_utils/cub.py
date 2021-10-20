@@ -72,6 +72,20 @@ def wait_for_service(host, port, timeout):
             return False
 
 def __request(host, port, secure, ignore_cert, path = ""):
+    """Executes a GET request against a HTTP(S) endpoint.
+
+    Args:
+        host: Hostname where the service is hosted.
+        port: Port where the service is expected to bind.
+        secure: Use TLS to secure the connection.
+        ignore_cert: Ignore TLS certificate errors.
+        path: Path on the remote server.
+
+    Returns:
+        Request result.
+
+    """
+
     scheme = "https" if secure else "http"
     # Check if service is responding as expected to basic request
     url = "%s://%s:%s/%s" % (scheme, host, port, path)
@@ -213,6 +227,8 @@ def check_kafka_rest_ready(host, port, service_timeout, secure=False, ignore_cer
         host: Hostname where Kafka REST Proxy is hosted.
         port: Kafka REST Proxy port.
         timeout: Time in secs to wait for the service to be available.
+        secure: Use TLS to secure the connection.
+        ignore_cert: Ignore TLS certificate errors.
 
     Returns:
         False, if the timeout expires and Kafka REST Proxy is unreachable, True otherwise.
@@ -243,6 +259,8 @@ def check_connect_ready(host, port, service_timeout, secure=False, ignore_cert=F
         host: Hostname where Connect worker is hosted.
         port: Connect port.
         timeout: Time in secs to wait for the service to be available.
+        secure: Use TLS to secure the connection.
+        ignore_cert: Ignore TLS certificate errors.
 
     Returns:
         False, if the timeout expires and Connect is not ready, True otherwise.
@@ -273,6 +291,8 @@ def check_ksql_server_ready(host, port, service_timeout, secure=False, ignore_ce
         host: Hostname where KSQL server is hosted.
         port: KSQL server port.
         timeout: Time in secs to wait for the service to be available.
+        secure: Use TLS to secure the connection.
+        ignore_cert: Ignore TLS certificate errors.
 
     Returns:
         False, if the timeout expires and KSQL server is not ready, True otherwise.
@@ -303,6 +323,8 @@ def check_control_center_ready(host, port, service_timeout, secure=False, ignore
         host: Hostname where Control Center is hosted.
         port: Control Center port.
         timeout: Time in secs to wait for the service to be available.
+        secure: Use TLS to secure the connection.
+        ignore_cert: Ignore TLS certificate errors.
 
     Returns:
         False, if the timeout expires and Connect is not ready, True otherwise.
@@ -409,14 +431,14 @@ def main():
     sr.add_argument('port', help='Port for Schema Registry.')
     sr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     sr.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
-    sr.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
+    sr.add_argument('ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
 
     kr = actions.add_parser('kr-ready', description='Check if Kafka REST Proxy is ready.')
     kr.add_argument('host', help='Hostname for REST Proxy.')
     kr.add_argument('port', help='Port for REST Proxy.')
     kr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     kr.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
-    kr.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
+    kr.add_argument('ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
 
     config = actions.add_parser('listeners', description='Get listeners value from advertised.listeners. Replaces host to 0.0.0.0')
     config.add_argument('advertised_listeners', help='advertised.listeners string.')
@@ -432,21 +454,21 @@ def main():
     cr.add_argument('port', help='Port for Connect worker.')
     cr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     cr.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
-    cr.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
+    cr.add_argument('ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
 
     ksqlr = actions.add_parser('ksql-server-ready', description='Check if KSQL server is ready.')
     ksqlr.add_argument('host', help='Hostname for KSQL server.')
     ksqlr.add_argument('port', help='Port for KSQL server.')
     ksqlr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     ksqlr.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
-    ksqlr.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
+    ksqlr.add_argument('ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
 
     c3r = actions.add_parser('control-center-ready', description='Check if Confluent Control Center is ready.')
     c3r.add_argument('host', help='Hostname for Control Center.')
     c3r.add_argument('port', help='Port for Control Center.')
     c3r.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     c3r.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
-    c3r.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
+    c3r.add_argument('ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
 
     if len(sys.argv) < 2:
         root.print_help()
