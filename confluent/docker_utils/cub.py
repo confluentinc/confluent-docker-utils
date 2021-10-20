@@ -71,6 +71,11 @@ def wait_for_service(host, port, timeout):
         if time.time() - start > timeout:
             return False
 
+def __request(host, port, secure, ignore_cert, path = ""):
+    scheme = "https" if secure else "http"
+    # Check if service is responding as expected to basic request
+    url = "%s://%s:%s/%s" % (scheme, host, port, path)
+    return requests.get(url, verify = not ignore_cert)
 
 def check_zookeeper_ready(connect_string, timeout):
     """Waits for a Zookeeper ensemble be ready. This commands uses the Java
@@ -169,7 +174,7 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
         return False
 
 
-def check_schema_registry_ready(host, port, service_timeout, secure = False, ignore_cert = False):
+def check_schema_registry_ready(host, port, service_timeout, secure=False, ignore_cert=False):
     """Waits for Schema registry to be ready.
 
     Args:
@@ -186,12 +191,10 @@ def check_schema_registry_ready(host, port, service_timeout, secure = False, ign
 
     # Check if you can connect to the endpoint
     status = wait_for_service(host, port, service_timeout)
-    scheme = "https" if secure else "http"
 
     if status:
         # Check if service is responding as expected to basic request
-        url = "%s://%s:%s/config" % (scheme, host, port)
-        r = requests.get(url, verify = not ignore_cert)
+        r = __request(host, port, secure, ignore_cert, "config")
         # The call should always return the compatibilityLevel
         if r.status_code // 100 == 2 and 'compatibilityLevel' in str(r.text):
             return True
@@ -203,7 +206,7 @@ def check_schema_registry_ready(host, port, service_timeout, secure = False, ign
         return False
 
 
-def check_kafka_rest_ready(host, port, service_timeout):
+def check_kafka_rest_ready(host, port, service_timeout, secure=False, ignore_cert=False):
     """Waits for Kafka REST Proxy to be ready.
 
     Args:
@@ -219,12 +222,10 @@ def check_kafka_rest_ready(host, port, service_timeout):
     status = wait_for_service(host, port, service_timeout)
 
     if status:
-
         # Check if service is responding as expected to basic request
         # Try to get topic list
         # NOTE: this will only test ZK <> REST Proxy interaction
-        url = "http://%s:%s/topics" % (host, port)
-        r = requests.get(url)
+        r = __request(host, port, secure, ignore_cert, "topics")
         if r.status_code // 100 == 2:
             return True
         else:
@@ -235,7 +236,7 @@ def check_kafka_rest_ready(host, port, service_timeout):
         return False
 
 
-def check_connect_ready(host, port, service_timeout):
+def check_connect_ready(host, port, service_timeout, secure=False, ignore_cert=False):
     """Waits for Connect to be ready.
 
     Args:
@@ -253,8 +254,7 @@ def check_connect_ready(host, port, service_timeout):
 
     if status:
         # Check if service is responding as expected to basic request
-        url = "http://%s:%s" % (host, port)
-        r = requests.get(url)
+        r = __request(host, port, secure, ignore_cert, "")
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'version' in str(r.text):
             return True
@@ -266,7 +266,7 @@ def check_connect_ready(host, port, service_timeout):
         return False
 
 
-def check_ksql_server_ready(host, port, service_timeout):
+def check_ksql_server_ready(host, port, service_timeout, secure=False, ignore_cert=False):
     """Waits for KSQL server to be ready.
 
     Args:
@@ -284,8 +284,7 @@ def check_ksql_server_ready(host, port, service_timeout):
 
     if status:
         # Check if service is responding as expected to basic request
-        url = "http://%s:%s/info" % (host, port)
-        r = requests.get(url)
+        r = __request(host, port, secure, ignore_cert, "info")
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'Ksql' in str(r.text):
             return True
@@ -297,7 +296,7 @@ def check_ksql_server_ready(host, port, service_timeout):
         return False
 
 
-def check_control_center_ready(host, port, service_timeout):
+def check_control_center_ready(host, port, service_timeout, secure=False, ignore_cert=False):
     """Waits for Confluent Control Center to be ready.
 
     Args:
@@ -315,8 +314,7 @@ def check_control_center_ready(host, port, service_timeout):
 
     if status:
         # Check if service is responding as expected to basic request
-        url = "http://%s:%s" % (host, port)
-        r = requests.get(url)
+        r = __request(host, port, secure, ignore_cert, "")
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'Control Center' in str(r.text):
             return True
@@ -417,6 +415,8 @@ def main():
     kr.add_argument('host', help='Hostname for REST Proxy.')
     kr.add_argument('port', help='Port for REST Proxy.')
     kr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+    kr.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
+    kr.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
 
     config = actions.add_parser('listeners', description='Get listeners value from advertised.listeners. Replaces host to 0.0.0.0')
     config.add_argument('advertised_listeners', help='advertised.listeners string.')
@@ -431,16 +431,22 @@ def main():
     cr.add_argument('host', help='Hostname for Connect worker.')
     cr.add_argument('port', help='Port for Connect worker.')
     cr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+    cr.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
+    cr.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
 
     ksqlr = actions.add_parser('ksql-server-ready', description='Check if KSQL server is ready.')
     ksqlr.add_argument('host', help='Hostname for KSQL server.')
     ksqlr.add_argument('port', help='Port for KSQL server.')
     ksqlr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+    ksqlr.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
+    ksqlr.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
 
     c3r = actions.add_parser('control-center-ready', description='Check if Confluent Control Center is ready.')
     c3r.add_argument('host', help='Hostname for Control Center.')
     c3r.add_argument('port', help='Port for Control Center.')
     c3r.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+    c3r.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
+    c3r.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
 
     if len(sys.argv) < 2:
         root.print_help()
@@ -458,13 +464,13 @@ def main():
     elif args.action == "sr-ready":
         success = check_schema_registry_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
     elif args.action == "kr-ready":
-        success = check_kafka_rest_ready(args.host, args.port, int(args.timeout))
+        success = check_kafka_rest_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
     elif args.action == "connect-ready":
-        success = check_connect_ready(args.host, args.port, int(args.timeout))
+        success = check_connect_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
     elif args.action == "ksql-server-ready":
-        success = check_ksql_server_ready(args.host, args.port, int(args.timeout))
+        success = check_ksql_server_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
     elif args.action == "control-center-ready":
-        success = check_control_center_ready(args.host, args.port, int(args.timeout))
+        success = check_control_center_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
     elif args.action == "ensure-topic":
         success = ensure_topic(args.config, args.file, int(args.timeout), args.create_if_not_exists)
     elif args.action == "listeners":
