@@ -80,6 +80,8 @@ def __request(host, port, secure, ignore_cert, username, password, path = ""):
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
         path: Path on the remote server.
+        username: Username used to authenticate to the server.
+        password: Password used to authenticate to the server.
 
     Returns:
         Request result.
@@ -196,8 +198,8 @@ def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert
         timeout: Time in secs to wait for the service to be available.
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
-        username: Username used to authenticate to the server.
-        password: Password used to authenticate to the server.
+        username: Username used to authenticate to the Schema Registry.
+        password: Password used to authenticate to the Schema Registry.
 
     Returns:
         False, if the timeout expires and Schema registry is unreachable, True otherwise.
@@ -230,8 +232,8 @@ def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert, use
         timeout: Time in secs to wait for the service to be available.
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
-        username: Username used to authenticate to the server.
-        password: Password used to authenticate to the server.
+        username: Username used to authenticate to the REST Proxy.
+        password: Password used to authenticate to the REST Proxy.
 
     Returns:
         False, if the timeout expires and Kafka REST Proxy is unreachable, True otherwise.
@@ -264,8 +266,8 @@ def check_connect_ready(host, port, service_timeout, secure, ignore_cert, userna
         timeout: Time in secs to wait for the service to be available.
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
-        username: Username used to authenticate to the server.
-        password: Password used to authenticate to the server.        
+        username: Username used to authenticate to the Connect worker.
+        password: Password used to authenticate to the Connect worker.
 
     Returns:
         False, if the timeout expires and Connect is not ready, True otherwise.
@@ -298,8 +300,8 @@ def check_ksql_server_ready(host, port, service_timeout, secure, ignore_cert, us
         timeout: Time in secs to wait for the service to be available.
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
-        username: Username used to authenticate to the server.
-        password: Password used to authenticate to the server.
+        username: Username used to authenticate to the KSQL Server.
+        password: Password used to authenticate to the KSQL Server.
 
     Returns:
         False, if the timeout expires and KSQL server is not ready, True otherwise.
