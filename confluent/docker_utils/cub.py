@@ -169,13 +169,15 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
         return False
 
 
-def check_schema_registry_ready(host, port, service_timeout):
+def check_schema_registry_ready(host, port, service_timeout, secure = False, ignore_cert = False):
     """Waits for Schema registry to be ready.
 
     Args:
         host: Hostname where schema registry is hosted.
         port: Schema registry port.
         timeout: Time in secs to wait for the service to be available.
+        secure: Use TLS to secure the connection.
+        ignore_cert: Ignore TLS certificate errors.
 
     Returns:
         False, if the timeout expires and Schema registry is unreachable, True otherwise.
@@ -184,11 +186,12 @@ def check_schema_registry_ready(host, port, service_timeout):
 
     # Check if you can connect to the endpoint
     status = wait_for_service(host, port, service_timeout)
+    scheme = "https" if secure else "http"
 
     if status:
         # Check if service is responding as expected to basic request
-        url = "http://%s:%s/config" % (host, port)
-        r = requests.get(url)
+        url = "%s://%s:%s/config" % (scheme, host, port)
+        r = requests.get(url, verify = not ignore_cert)
         # The call should always return the compatibilityLevel
         if r.status_code // 100 == 2 and 'compatibilityLevel' in str(r.text):
             return True
@@ -407,6 +410,8 @@ def main():
     sr.add_argument('host', help='Hostname for Schema Registry.')
     sr.add_argument('port', help='Port for Schema Registry.')
     sr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+    sr.add_argument('secure', help='Use TLS to secure the connection.', action='store_true')
+    sr.add_argument('ignore-cert', help='Ignore TLS certificate errors.', action='store_true')
 
     kr = actions.add_parser('kr-ready', description='Check if Kafka REST Proxy is ready.')
     kr.add_argument('host', help='Hostname for REST Proxy.')
@@ -451,7 +456,7 @@ def main():
         success = check_kafka_ready(int(args.expected_brokers), int(args.timeout), args.config, args.bootstrap_broker_list, args.zookeeper_connect,
                                     args.security_protocol)
     elif args.action == "sr-ready":
-        success = check_schema_registry_ready(args.host, args.port, int(args.timeout))
+        success = check_schema_registry_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
     elif args.action == "kr-ready":
         success = check_kafka_rest_ready(args.host, args.port, int(args.timeout))
     elif args.action == "connect-ready":
