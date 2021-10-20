@@ -188,7 +188,7 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
         return False
 
 
-def check_schema_registry_ready(host, port, service_timeout, secure=False, ignore_cert=False):
+def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert):
     """Waits for Schema registry to be ready.
 
     Args:
@@ -220,7 +220,7 @@ def check_schema_registry_ready(host, port, service_timeout, secure=False, ignor
         return False
 
 
-def check_kafka_rest_ready(host, port, service_timeout, secure=False, ignore_cert=False):
+def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert):
     """Waits for Kafka REST Proxy to be ready.
 
     Args:
@@ -252,7 +252,7 @@ def check_kafka_rest_ready(host, port, service_timeout, secure=False, ignore_cer
         return False
 
 
-def check_connect_ready(host, port, service_timeout, secure=False, ignore_cert=False):
+def check_connect_ready(host, port, service_timeout, secure, ignore_cert):
     """Waits for Connect to be ready.
 
     Args:
@@ -284,7 +284,7 @@ def check_connect_ready(host, port, service_timeout, secure=False, ignore_cert=F
         return False
 
 
-def check_ksql_server_ready(host, port, service_timeout, secure=False, ignore_cert=False):
+def check_ksql_server_ready(host, port, service_timeout, secure, ignore_cert):
     """Waits for KSQL server to be ready.
 
     Args:
@@ -316,7 +316,7 @@ def check_ksql_server_ready(host, port, service_timeout, secure=False, ignore_ce
         return False
 
 
-def check_control_center_ready(host, port, service_timeout, secure=False, ignore_cert=False):
+def check_control_center_ready(host, port, service_timeout, secure, ignore_cert):
     """Waits for Confluent Control Center to be ready.
 
     Args:
