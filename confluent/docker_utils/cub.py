@@ -41,6 +41,7 @@ import socket
 import time
 import re
 import requests
+from requests.auth import HTTPBasicAuth
 import subprocess
 
 CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"')
@@ -71,7 +72,7 @@ def wait_for_service(host, port, timeout):
         if time.time() - start > timeout:
             return False
 
-def __request(host, port, secure, ignore_cert, path = ""):
+def __request(host, port, secure, ignore_cert, username='', password='', path=''):
     """Executes a GET request against a HTTP(S) endpoint.
 
     Args:
@@ -80,6 +81,8 @@ def __request(host, port, secure, ignore_cert, path = ""):
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
         path: Path on the remote server.
+        username: Username used to authenticate to the server.
+        password: Password used to authenticate to the server.
 
     Returns:
         Request result.
@@ -87,7 +90,8 @@ def __request(host, port, secure, ignore_cert, path = ""):
     """
     scheme = "https" if secure else "http"
     url = "%s://%s:%s/%s" % (scheme, host, port, path)
-    return requests.get(url, verify = not ignore_cert)
+    auth = HTTPBasicAuth(username, password) if (username or password) else None
+    return requests.get(url, verify = not ignore_cert, auth = auth)
 
 def check_zookeeper_ready(connect_string, timeout):
     """Waits for a Zookeeper ensemble be ready. This commands uses the Java
@@ -186,7 +190,7 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
         return False
 
 
-def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert):
+def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert, username, password):
     """Waits for Schema registry to be ready.
 
     Args:
@@ -195,6 +199,8 @@ def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert
         timeout: Time in secs to wait for the service to be available.
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
+        username: Username used to authenticate to the Schema Registry.
+        password: Password used to authenticate to the Schema Registry.
 
     Returns:
         False, if the timeout expires and Schema registry is unreachable, True otherwise.
@@ -206,7 +212,7 @@ def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert
 
     if status:
         # Check if service is responding as expected to basic request
-        r = __request(host, port, secure, ignore_cert, "config")
+        r = __request(host, port, secure, ignore_cert, username, password, "config")
         # The call should always return the compatibilityLevel
         if r.status_code // 100 == 2 and 'compatibilityLevel' in str(r.text):
             return True
@@ -218,7 +224,7 @@ def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert
         return False
 
 
-def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert):
+def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert, username, password):
     """Waits for Kafka REST Proxy to be ready.
 
     Args:
@@ -227,6 +233,8 @@ def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert):
         timeout: Time in secs to wait for the service to be available.
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
+        username: Username used to authenticate to the REST Proxy.
+        password: Password used to authenticate to the REST Proxy.
 
     Returns:
         False, if the timeout expires and Kafka REST Proxy is unreachable, True otherwise.
@@ -239,7 +247,7 @@ def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert):
         # Check if service is responding as expected to basic request
         # Try to get topic list
         # NOTE: this will only test ZK <> REST Proxy interaction
-        r = __request(host, port, secure, ignore_cert, "topics")
+        r = __request(host, port, secure, ignore_cert, username, password, "topics")
         if r.status_code // 100 == 2:
             return True
         else:
@@ -250,7 +258,7 @@ def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert):
         return False
 
 
-def check_connect_ready(host, port, service_timeout, secure, ignore_cert):
+def check_connect_ready(host, port, service_timeout, secure, ignore_cert, username, password):
     """Waits for Connect to be ready.
 
     Args:
@@ -259,6 +267,8 @@ def check_connect_ready(host, port, service_timeout, secure, ignore_cert):
         timeout: Time in secs to wait for the service to be available.
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
+        username: Username used to authenticate to the Connect worker.
+        password: Password used to authenticate to the Connect worker.
 
     Returns:
         False, if the timeout expires and Connect is not ready, True otherwise.
@@ -270,7 +280,7 @@ def check_connect_ready(host, port, service_timeout, secure, ignore_cert):
 
     if status:
         # Check if service is responding as expected to basic request
-        r = __request(host, port, secure, ignore_cert, "")
+        r = __request(host, port, secure, ignore_cert, username, password)
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'version' in str(r.text):
             return True
@@ -282,7 +292,7 @@ def check_connect_ready(host, port, service_timeout, secure, ignore_cert):
         return False
 
 
-def check_ksql_server_ready(host, port, service_timeout, secure, ignore_cert):
+def check_ksql_server_ready(host, port, service_timeout, secure, ignore_cert, username, password):
     """Waits for KSQL server to be ready.
 
     Args:
@@ -291,6 +301,8 @@ def check_ksql_server_ready(host, port, service_timeout, secure, ignore_cert):
         timeout: Time in secs to wait for the service to be available.
         secure: Use TLS to secure the connection.
         ignore_cert: Ignore TLS certificate errors.
+        username: Username used to authenticate to the KSQL Server.
+        password: Password used to authenticate to the KSQL Server.
 
     Returns:
         False, if the timeout expires and KSQL server is not ready, True otherwise.
@@ -302,7 +314,7 @@ def check_ksql_server_ready(host, port, service_timeout, secure, ignore_cert):
 
     if status:
         # Check if service is responding as expected to basic request
-        r = __request(host, port, secure, ignore_cert, "info")
+        r = __request(host, port, secure, ignore_cert, username, password, "info")
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'Ksql' in str(r.text):
             return True
@@ -334,7 +346,7 @@ def check_control_center_ready(host, port, service_timeout, secure, ignore_cert)
 
     if status:
         # Check if service is responding as expected to basic request
-        r = __request(host, port, secure, ignore_cert, "")
+        r = __request(host, port, secure, ignore_cert)
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'Control Center' in str(r.text):
             return True
@@ -430,6 +442,8 @@ def main():
     sr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     sr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
     sr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
+    sr.add_argument('--username', help='Username used to authenticate to the Schema Registry.', default='')
+    sr.add_argument('--password', help='Password used to authenticate to the Schema Registry.', default='')
 
     kr = actions.add_parser('kr-ready', description='Check if Kafka REST Proxy is ready.')
     kr.add_argument('host', help='Hostname for REST Proxy.')
@@ -437,6 +451,8 @@ def main():
     kr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     kr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
     kr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
+    kr.add_argument('--username', help='Username used to authenticate to the REST Proxy.', default='')
+    kr.add_argument('--password', help='Password used to authenticate to the REST Proxy.', default='')
 
     config = actions.add_parser('listeners', description='Get listeners value from advertised.listeners. Replaces host to 0.0.0.0')
     config.add_argument('advertised_listeners', help='advertised.listeners string.')
@@ -453,6 +469,8 @@ def main():
     cr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     cr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
     cr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
+    cr.add_argument('--username', help='Username used to authenticate to the Connect worker.', default='')
+    cr.add_argument('--password', help='Password used to authenticate to the Connect worker.', default='')
 
     ksqlr = actions.add_parser('ksql-server-ready', description='Check if KSQL server is ready.')
     ksqlr.add_argument('host', help='Hostname for KSQL server.')
@@ -460,6 +478,8 @@ def main():
     ksqlr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     ksqlr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
     ksqlr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
+    ksqlr.add_argument('--username', help='Username used to authenticate to the KSQL server.', default='')
+    ksqlr.add_argument('--password', help='Password used to authenticate to the KSQL server.', default='')
 
     c3r = actions.add_parser('control-center-ready', description='Check if Confluent Control Center is ready.')
     c3r.add_argument('host', help='Hostname for Control Center.')
@@ -482,13 +502,13 @@ def main():
         success = check_kafka_ready(int(args.expected_brokers), int(args.timeout), args.config, args.bootstrap_broker_list, args.zookeeper_connect,
                                     args.security_protocol)
     elif args.action == "sr-ready":
-        success = check_schema_registry_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
+        success = check_schema_registry_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert, args.username, args.password)
     elif args.action == "kr-ready":
-        success = check_kafka_rest_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
+        success = check_kafka_rest_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert, args.username, args.password)
     elif args.action == "connect-ready":
-        success = check_connect_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
+        success = check_connect_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert, args.username, args.password)
     elif args.action == "ksql-server-ready":
-        success = check_ksql_server_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
+        success = check_ksql_server_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert, args.username, args.password)
     elif args.action == "control-center-ready":
         success = check_control_center_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
     elif args.action == "ensure-topic":
