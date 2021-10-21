@@ -71,7 +71,7 @@ def wait_for_service(host, port, timeout):
         if time.time() - start > timeout:
             return False
 
-def __request(host, port, secure, ignore_cert, username, password, path = ""):
+def __request(host, port, secure, ignore_cert, username='', password='', path=''):
     """Executes a GET request against a HTTP(S) endpoint.
 
     Args:
@@ -89,7 +89,7 @@ def __request(host, port, secure, ignore_cert, username, password, path = ""):
     """
     scheme = "https" if secure else "http"
     url = "%s://%s:%s/%s" % (scheme, host, port, path)
-    auth = (username, password) if (username is not None or password is not None) else None
+    auth = (username, password) if (username or password) else None
     return requests.get(url, verify = not ignore_cert, auth = auth)
 
 def check_zookeeper_ready(connect_string, timeout):
@@ -279,7 +279,7 @@ def check_connect_ready(host, port, service_timeout, secure, ignore_cert, userna
 
     if status:
         # Check if service is responding as expected to basic request
-        r = __request(host, port, secure, ignore_cert, username, password, "")
+        r = __request(host, port, secure, ignore_cert, username, password)
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'version' in str(r.text):
             return True
@@ -345,7 +345,7 @@ def check_control_center_ready(host, port, service_timeout, secure, ignore_cert)
 
     if status:
         # Check if service is responding as expected to basic request
-        r = __request(host, port, secure, ignore_cert, None, None, "")
+        r = __request(host, port, secure, ignore_cert)
         # The call should always return a json string including version
         if r.status_code // 100 == 2 and 'Control Center' in str(r.text):
             return True
@@ -441,8 +441,8 @@ def main():
     sr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     sr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
     sr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
-    sr.add_argument('--username', help='Username used to authenticate to the Schema Registry.')
-    sr.add_argument('--password', help='Password used to authenticate to the Schema Registry.')
+    sr.add_argument('--username', help='Username used to authenticate to the Schema Registry.', default='')
+    sr.add_argument('--password', help='Password used to authenticate to the Schema Registry.', default='')
 
     kr = actions.add_parser('kr-ready', description='Check if Kafka REST Proxy is ready.')
     kr.add_argument('host', help='Hostname for REST Proxy.')
@@ -450,8 +450,8 @@ def main():
     kr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     kr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
     kr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
-    kr.add_argument('--username', help='Username used to authenticate to the REST Proxy.')
-    kr.add_argument('--password', help='Password used to authenticate to the REST Proxy.')
+    kr.add_argument('--username', help='Username used to authenticate to the REST Proxy.', default='')
+    kr.add_argument('--password', help='Password used to authenticate to the REST Proxy.', default='')
 
     config = actions.add_parser('listeners', description='Get listeners value from advertised.listeners. Replaces host to 0.0.0.0')
     config.add_argument('advertised_listeners', help='advertised.listeners string.')
@@ -468,8 +468,8 @@ def main():
     cr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     cr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
     cr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
-    cr.add_argument('--username', help='Username used to authenticate to the Connect worker.')
-    cr.add_argument('--password', help='Password used to authenticate to the Connect worker.')
+    cr.add_argument('--username', help='Username used to authenticate to the Connect worker.', default='')
+    cr.add_argument('--password', help='Password used to authenticate to the Connect worker.', default='')
 
     ksqlr = actions.add_parser('ksql-server-ready', description='Check if KSQL server is ready.')
     ksqlr.add_argument('host', help='Hostname for KSQL server.')
@@ -477,8 +477,8 @@ def main():
     ksqlr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
     ksqlr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
     ksqlr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
-    ksqlr.add_argument('--username', help='Username used to authenticate to the KSQL server.')
-    ksqlr.add_argument('--password', help='Password used to authenticate to the KSQL server.')
+    ksqlr.add_argument('--username', help='Username used to authenticate to the KSQL server.', default='')
+    ksqlr.add_argument('--password', help='Password used to authenticate to the KSQL server.', default='')
 
     c3r = actions.add_parser('control-center-ready', description='Check if Confluent Control Center is ready.')
     c3r.add_argument('host', help='Hostname for Control Center.')
