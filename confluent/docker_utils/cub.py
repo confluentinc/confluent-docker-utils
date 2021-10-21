@@ -41,6 +41,7 @@ import socket
 import time
 import re
 import requests
+from requests.auth import HTTPBasicAuth
 import subprocess
 
 CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"')
@@ -89,7 +90,7 @@ def __request(host, port, secure, ignore_cert, username='', password='', path=''
     """
     scheme = "https" if secure else "http"
     url = "%s://%s:%s/%s" % (scheme, host, port, path)
-    auth = (username, password) if (username or password) else None
+    auth = HTTPBasicAuth(username, password) if (username or password) else None
     return requests.get(url, verify = not ignore_cert, auth = auth)
 
 def check_zookeeper_ready(connect_string, timeout):
