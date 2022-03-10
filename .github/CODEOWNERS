@@ -1,5 +1,1 @@
-# See go/codeowners - automatically generated for confluentinc/confluent-docker-utils:
-*	@andrewegel
-*	@dragosvictor
-*	@jkao97
-*	@xjin-Confluent
+*	@confluent/tools
