@@ -47,9 +47,9 @@ Version 0.0.31
 Version 0.0.29
 --------------------------------------------------------------------------------
 
-* Move notifications to devprod-notifications.
+* Move notifications to tools-notifications.
 
-* Move notifications to devprod-notifications.
+* Move notifications to tools-notifications.
 
 * Tox python2 / python3 fixes (#9)
 
