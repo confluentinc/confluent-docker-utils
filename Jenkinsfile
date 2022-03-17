@@ -1,6 +1,6 @@
 python {
   owner = 'tools'
-  slackChannel = 'tools-notifications'
+  slackChannel = 'devprod-notifications'
   // uses docker for testing, but nor for publishing.
   nodeLabel = 'docker-ubuntu-20-python'
   usesDockerForTesting = true
