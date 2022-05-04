@@ -18,7 +18,7 @@ setup(
 
     include_package_data=True,
 
-    python_requires='>=3.6',
+    python_requires='>=3.6.15',
     setup_requires=['setuptools-git'],
 
     entry_points={
