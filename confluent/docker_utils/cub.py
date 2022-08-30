@@ -110,6 +110,7 @@ def check_zookeeper_ready(connect_string, timeout):
     cmd_template = """
              java {jvm_opts} \
                  -cp {classpath} \
+                 -Dlog4j.configuration=file:/etc/kafka/log4j.properties \
                  io.confluent.admin.utils.cli.ZookeeperReadyCommand \
                  {connect_string} \
                  {timeout_in_ms}"""
@@ -160,6 +161,7 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
     cmd_template = """
              java {jvm_opts} \
                  -cp {classpath} \
+                 -Dlog4j.configuration=file:/etc/kafka/log4j.properties \ 
                  io.confluent.admin.utils.cli.KafkaReadyCommand \
                  {expected_brokers} \
                  {timeout_in_ms}"""
@@ -394,6 +396,7 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
     """
     cmd_template = """
              java {jvm_opts} \
+                 -Dlog4j.configuration=file:/etc/kafka/log4j.properties \
                  -cp {classpath} \
                  io.confluent.kafkaensure.cli.TopicEnsureCommand \
                  --config {config} \
