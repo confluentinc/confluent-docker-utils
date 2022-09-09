@@ -93,6 +93,12 @@ def __request(host, port, secure, ignore_cert, username='', password='', path=''
     auth = HTTPBasicAuth(username, password) if (username or password) else None
     return requests.get(url, verify = not ignore_cert, auth = auth)
 
+def log4j_config_file():
+    if (os.environ.get("COMPONENT")):
+        return "/etc/" + os.environ.get("COMPONENT") + "/log4j.properties"
+    else:
+        return "/etc/cp-base-new/log4j.properties"
+
 def check_zookeeper_ready(connect_string, timeout):
     """Waits for a Zookeeper ensemble be ready. This commands uses the Java
        docker-utils library to get the Zookeeper status.
@@ -110,6 +116,7 @@ def check_zookeeper_ready(connect_string, timeout):
     cmd_template = """
              java {jvm_opts} \
                  -cp {classpath} \
+                 -Dlog4j.configuration=file:{log4j_config} \
                  io.confluent.admin.utils.cli.ZookeeperReadyCommand \
                  {connect_string} \
                  {timeout_in_ms}"""
@@ -127,6 +134,7 @@ def check_zookeeper_ready(connect_string, timeout):
     cmd = cmd_template.format(
         classpath=CLASSPATH,
         jvm_opts=jvm_opts or "",
+        log4j_config=log4j_config_file(),
         connect_string=connect_string,
         timeout_in_ms=timeout * 1000)
 
@@ -160,6 +168,7 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
     cmd_template = """
              java {jvm_opts} \
                  -cp {classpath} \
+                 -Dlog4j.configuration=file:{log4j_config} \
                  io.confluent.admin.utils.cli.KafkaReadyCommand \
                  {expected_brokers} \
                  {timeout_in_ms}"""
@@ -167,6 +176,7 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
     cmd = cmd_template.format(
         classpath=CLASSPATH,
         jvm_opts=os.environ.get("KAFKA_OPTS") or "",
+        log4j_config=log4j_config_file(),
         bootstrap_broker_list=bootstrap_broker_list,
         expected_brokers=expected_brokers,
         timeout_in_ms=timeout * 1000)
@@ -394,6 +404,7 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
     """
     cmd_template = """
              java {jvm_opts} \
+                 -Dlog4j.configuration=file:/{log4j_config} \
                  -cp {classpath} \
                  io.confluent.kafkaensure.cli.TopicEnsureCommand \
                  --config {config} \
@@ -404,6 +415,7 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
     cmd = cmd_template.format(
         classpath=CLASSPATH,
         jvm_opts=os.environ.get("KAFKA_OPTS") or "",
+        log4j_config=log4j_config_file(),
         config=config,
         file=file,
         timeout_in_ms=timeout * 1000,
