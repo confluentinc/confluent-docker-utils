@@ -45,6 +45,7 @@ from requests.auth import HTTPBasicAuth
 import subprocess
 
 CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"')
+DEFAULT_LOG4J_FILE = "/etc/cp-base-new/log4j.properties"
 
 
 def wait_for_service(host, port, timeout):
@@ -94,13 +95,13 @@ def __request(host, port, secure, ignore_cert, username='', password='', path=''
     return requests.get(url, verify = not ignore_cert, auth = auth)
 
 def log4j_config_file():
-    def default_config = "/etc/cp-base-new/log4j.properties"
-    if (os.environ.get("COMPONENT")):
-        def component_config = "/etc/" + os.environ.get("COMPONENT") + "/log4j.properties"
-        # check component_config exists, else default to cp-base-new
-        if os.path.exists(component_config):
-            return component_config
-    return default_config
+    def config_file = DEFAULT_LOG4J_FILE
+    def component_config = "/etc/" + os.environ.get("COMPONENT") + "/log4j.properties"
+    # check component_config exists, else default to cp-base-new
+    if os.environ.get("COMPONENT") and os.path.exists(component_config):
+        config_file = component_config
+    print("Using log4j config %s", config_file)
+    return config_file
 
 def check_zookeeper_ready(connect_string, timeout):
     """Waits for a Zookeeper ensemble be ready. This commands uses the Java
