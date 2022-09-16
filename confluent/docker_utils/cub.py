@@ -96,10 +96,11 @@ def __request(host, port, secure, ignore_cert, username='', password='', path=''
 
 def log4j_config_file():
     config_file = DEFAULT_LOG4J_FILE
-    component_config = "/etc/" + os.environ.get("COMPONENT") + "/log4j.properties"
     # check component_config exists, else default to cp-base-new
-    if os.environ.get("COMPONENT") and os.path.exists(component_config):
-        config_file = component_config
+    if os.environ.get("COMPONENT"):
+        component_config = "/etc/" + os.environ.get("COMPONENT") + "/log4j.properties"
+        if os.path.exists(component_config):
+            config_file = component_config
     print("Using log4j config %s", config_file)
     return config_file
 
