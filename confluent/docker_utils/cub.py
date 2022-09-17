@@ -101,7 +101,7 @@ def log4j_config_file():
         component_config = "/etc/" + os.environ.get("COMPONENT") + "/log4j.properties"
         if os.path.exists(component_config):
             config_file = component_config
-    print("Using log4j config %s", config_file)
+    print(f'Using log4j config {config_file}')
     return config_file
 
 def check_zookeeper_ready(connect_string, timeout):
