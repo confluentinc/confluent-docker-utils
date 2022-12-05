@@ -44,7 +44,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import subprocess
 
-CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"')
+CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*:/usr/share/java/confluent-telemetry/*"')
 DEFAULT_LOG4J_FILE = "/etc/cp-base-new/log4j.properties"
 
 
