@@ -6,4 +6,4 @@ Jinja2~=2.11
 markupsafe~=2.0.1
 mock~=4.0
 requests~=2.25
-cryptography~=3.4
+cryptography~=39.0.1
