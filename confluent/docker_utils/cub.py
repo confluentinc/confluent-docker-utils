@@ -44,7 +44,9 @@ import requests
 from requests.auth import HTTPBasicAuth
 import subprocess
 
-CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"')
+CLASSPATH = os.environ.get(
+    "CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"'
+)
 DEFAULT_LOG4J_FILE = "/etc/cp-base-new/log4j.properties"
 
 
@@ -73,7 +75,8 @@ def wait_for_service(host, port, timeout):
         if time.time() - start > timeout:
             return False
 
-def __request(host, port, secure, ignore_cert, username='', password='', path=''):
+
+def __request(host, port, secure, ignore_cert, username="", password="", path=""):
     """Executes a GET request against a HTTP(S) endpoint.
 
     Args:
@@ -92,7 +95,8 @@ def __request(host, port, secure, ignore_cert, username='', password='', path=''
     scheme = "https" if secure else "http"
     url = "%s://%s:%s/%s" % (scheme, host, port, path)
     auth = HTTPBasicAuth(username, password) if (username or password) else None
-    return requests.get(url, verify = not ignore_cert, auth = auth)
+    return requests.get(url, verify=not ignore_cert, auth=auth)
+
 
 def log4j_config_file():
     config_file = DEFAULT_LOG4J_FILE
@@ -101,8 +105,9 @@ def log4j_config_file():
         component_config = "/etc/" + os.environ.get("COMPONENT") + "/log4j.properties"
         if os.path.exists(component_config):
             config_file = component_config
-    print(f'Using log4j config {config_file}')
+    print(f"Using log4j config {config_file}")
     return config_file
+
 
 def check_zookeeper_ready(connect_string, timeout):
     """Waits for a Zookeeper ensemble be ready. This commands uses the Java
@@ -141,12 +146,20 @@ def check_zookeeper_ready(connect_string, timeout):
         jvm_opts=jvm_opts or "",
         log4j_config=log4j_config_file(),
         connect_string=connect_string,
-        timeout_in_ms=timeout * 1000)
+        timeout_in_ms=timeout * 1000,
+    )
 
     return subprocess.call(cmd, shell=True) == 0
 
 
-def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=None, zookeeper_connect=None, security_protocol=None):
+def check_kafka_ready(
+    expected_brokers,
+    timeout,
+    config,
+    bootstrap_broker_list=None,
+    zookeeper_connect=None,
+    security_protocol=None,
+):
     """Waits for a Kafka cluster to be ready and have at least the
        expected_brokers to present. This commands uses the Java docker-utils
        library to get the Kafka status.
@@ -184,18 +197,25 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
         log4j_config=log4j_config_file(),
         bootstrap_broker_list=bootstrap_broker_list,
         expected_brokers=expected_brokers,
-        timeout_in_ms=timeout * 1000)
+        timeout_in_ms=timeout * 1000,
+    )
 
     if config:
         cmd = "{cmd} --config {config_path}".format(cmd=cmd, config_path=config)
 
     if security_protocol:
-        cmd = "{cmd} --security-protocol {protocol}".format(cmd=cmd, protocol=security_protocol)
+        cmd = "{cmd} --security-protocol {protocol}".format(
+            cmd=cmd, protocol=security_protocol
+        )
 
     if bootstrap_broker_list:
-        cmd = "{cmd} -b {broker_list}".format(cmd=cmd, broker_list=bootstrap_broker_list)
+        cmd = "{cmd} -b {broker_list}".format(
+            cmd=cmd, broker_list=bootstrap_broker_list
+        )
     else:
-        cmd = "{cmd} -z {zookeeper_connect}".format(cmd=cmd, zookeeper_connect=zookeeper_connect)
+        cmd = "{cmd} -z {zookeeper_connect}".format(
+            cmd=cmd, zookeeper_connect=zookeeper_connect
+        )
 
     exit_code = subprocess.call(cmd, shell=True)
 
@@ -205,7 +225,9 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
         return False
 
 
-def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert, username, password):
+def check_schema_registry_ready(
+    host, port, service_timeout, secure, ignore_cert, username, password
+):
     """Waits for Schema registry to be ready.
 
     Args:
@@ -229,17 +251,25 @@ def check_schema_registry_ready(host, port, service_timeout, secure, ignore_cert
         # Check if service is responding as expected to basic request
         r = __request(host, port, secure, ignore_cert, username, password, "config")
         # The call should always return the compatibilityLevel
-        if r.status_code // 100 == 2 and 'compatibilityLevel' in str(r.text):
+        if r.status_code // 100 == 2 and "compatibilityLevel" in str(r.text):
             return True
         else:
-            print("Unexpected response with code: %s and content: %s" % (str(r.status_code), str(r.text)), file=sys.stderr)
+            print(
+                "Unexpected response with code: %s and content: %s"
+                % (str(r.status_code), str(r.text)),
+                file=sys.stderr,
+            )
             return False
     else:
-        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        print(
+            "%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr
+        )
         return False
 
 
-def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert, username, password):
+def check_kafka_rest_ready(
+    host, port, service_timeout, secure, ignore_cert, username, password
+):
     """Waits for Kafka REST Proxy to be ready.
 
     Args:
@@ -266,14 +296,22 @@ def check_kafka_rest_ready(host, port, service_timeout, secure, ignore_cert, use
         if r.status_code // 100 == 2:
             return True
         else:
-            print("Unexpected response with code: %s and content: %s" % (str(r.status_code), str(r.text)), file=sys.stderr)
+            print(
+                "Unexpected response with code: %s and content: %s"
+                % (str(r.status_code), str(r.text)),
+                file=sys.stderr,
+            )
             return False
     else:
-        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        print(
+            "%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr
+        )
         return False
 
 
-def check_connect_ready(host, port, service_timeout, secure, ignore_cert, username, password):
+def check_connect_ready(
+    host, port, service_timeout, secure, ignore_cert, username, password
+):
     """Waits for Connect to be ready.
 
     Args:
@@ -297,17 +335,25 @@ def check_connect_ready(host, port, service_timeout, secure, ignore_cert, userna
         # Check if service is responding as expected to basic request
         r = __request(host, port, secure, ignore_cert, username, password)
         # The call should always return a json string including version
-        if r.status_code // 100 == 2 and 'version' in str(r.text):
+        if r.status_code // 100 == 2 and "version" in str(r.text):
             return True
         else:
-            print("Unexpected response with code: %s and content: %s" % (str(r.status_code), str(r.text)), file=sys.stderr)
+            print(
+                "Unexpected response with code: %s and content: %s"
+                % (str(r.status_code), str(r.text)),
+                file=sys.stderr,
+            )
             return False
     else:
-        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        print(
+            "%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr
+        )
         return False
 
 
-def check_ksql_server_ready(host, port, service_timeout, secure, ignore_cert, username, password):
+def check_ksql_server_ready(
+    host, port, service_timeout, secure, ignore_cert, username, password
+):
     """Waits for KSQL server to be ready.
 
     Args:
@@ -331,13 +377,19 @@ def check_ksql_server_ready(host, port, service_timeout, secure, ignore_cert, us
         # Check if service is responding as expected to basic request
         r = __request(host, port, secure, ignore_cert, username, password, "info")
         # The call should always return a json string including version
-        if r.status_code // 100 == 2 and 'Ksql' in str(r.text):
+        if r.status_code // 100 == 2 and "Ksql" in str(r.text):
             return True
         else:
-            print("Unexpected response with code: %s and content: %s" % (str(r.status_code), str(r.text)), file=sys.stderr)
+            print(
+                "Unexpected response with code: %s and content: %s"
+                % (str(r.status_code), str(r.text)),
+                file=sys.stderr,
+            )
             return False
     else:
-        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        print(
+            "%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr
+        )
         return False
 
 
@@ -363,13 +415,19 @@ def check_control_center_ready(host, port, service_timeout, secure, ignore_cert)
         # Check if service is responding as expected to basic request
         r = __request(host, port, secure, ignore_cert)
         # The call should always return a json string including version
-        if r.status_code // 100 == 2 and 'Control Center' in str(r.text):
+        if r.status_code // 100 == 2 and "Control Center" in str(r.text):
             return True
         else:
-            print("Unexpected response with code: %s and content: %s" % (str(r.status_code), str(r.text)), file=sys.stderr)
+            print(
+                "Unexpected response with code: %s and content: %s"
+                % (str(r.status_code), str(r.text)),
+                file=sys.stderr,
+            )
             return False
     else:
-        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        print(
+            "%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr
+        )
         return False
 
 
@@ -389,8 +447,8 @@ def get_kafka_listeners(advertised_listeners):
         listeners string.
 
     """
-    host = re.compile(r'://(.*?):', re.UNICODE)
-    return host.sub(r'://0.0.0.0:', advertised_listeners)
+    host = re.compile(r"://(.*?):", re.UNICODE)
+    return host.sub(r"://0.0.0.0:", advertised_listeners)
 
 
 def ensure_topic(config, file, timeout, create_if_not_exists):
@@ -424,7 +482,8 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
         config=config,
         file=file,
         timeout_in_ms=timeout * 1000,
-        create_if_not_exists=create_if_not_exists)
+        create_if_not_exists=create_if_not_exists,
+    )
 
     exit_code = subprocess.call(cmd, shell=True)
 
@@ -436,74 +495,173 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
 
 def main():
     import argparse
-    root = argparse.ArgumentParser(description='Confluent Platform Utility Belt.')
 
-    actions = root.add_subparsers(help='Actions', dest='action')
+    root = argparse.ArgumentParser(description="Confluent Platform Utility Belt.")
 
-    zk = actions.add_parser('zk-ready', description='Check if ZK is ready.')
-    zk.add_argument('connect_string', help='Zookeeper connect string.')
-    zk.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+    actions = root.add_subparsers(help="Actions", dest="action")
 
-    kafka = actions.add_parser('kafka-ready', description='Check if Kafka is ready.')
-    kafka.add_argument('expected_brokers', help='Minimum number of brokers to wait for', type=int)
-    kafka.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
+    zk = actions.add_parser("zk-ready", description="Check if ZK is ready.")
+    zk.add_argument("connect_string", help="Zookeeper connect string.")
+    zk.add_argument(
+        "timeout", help="Time in secs to wait for service to be ready.", type=int
+    )
+
+    kafka = actions.add_parser("kafka-ready", description="Check if Kafka is ready.")
+    kafka.add_argument(
+        "expected_brokers", help="Minimum number of brokers to wait for", type=int
+    )
+    kafka.add_argument(
+        "timeout", help="Time in secs to wait for service to be ready.", type=int
+    )
     kafka_or_zk = kafka.add_mutually_exclusive_group(required=True)
-    kafka_or_zk.add_argument('-b', '--bootstrap_broker_list', help='List of bootstrap brokers.')
-    kafka_or_zk.add_argument('-z', '--zookeeper_connect', help='Zookeeper connect string.')
-    kafka.add_argument('-c', '--config', help='Path to config properties file (required when security is enabled).')
-    kafka.add_argument('-s', '--security-protocol', help='Security protocol to use when multiple listeners are enabled.')
+    kafka_or_zk.add_argument(
+        "-b", "--bootstrap_broker_list", help="List of bootstrap brokers."
+    )
+    kafka_or_zk.add_argument(
+        "-z", "--zookeeper_connect", help="Zookeeper connect string."
+    )
+    kafka.add_argument(
+        "-c",
+        "--config",
+        help="Path to config properties file (required when security is enabled).",
+    )
+    kafka.add_argument(
+        "-s",
+        "--security-protocol",
+        help="Security protocol to use when multiple listeners are enabled.",
+    )
 
-    sr = actions.add_parser('sr-ready', description='Check if Schema Registry is ready.')
-    sr.add_argument('host', help='Hostname for Schema Registry.')
-    sr.add_argument('port', help='Port for Schema Registry.')
-    sr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
-    sr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
-    sr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
-    sr.add_argument('--username', help='Username used to authenticate to the Schema Registry.', default='')
-    sr.add_argument('--password', help='Password used to authenticate to the Schema Registry.', default='')
+    sr = actions.add_parser(
+        "sr-ready", description="Check if Schema Registry is ready."
+    )
+    sr.add_argument("host", help="Hostname for Schema Registry.")
+    sr.add_argument("port", help="Port for Schema Registry.")
+    sr.add_argument(
+        "timeout", help="Time in secs to wait for service to be ready.", type=int
+    )
+    sr.add_argument(
+        "--secure", help="Use TLS to secure the connection.", action="store_true"
+    )
+    sr.add_argument(
+        "--ignore_cert", help="Ignore TLS certificate errors.", action="store_true"
+    )
+    sr.add_argument(
+        "--username",
+        help="Username used to authenticate to the Schema Registry.",
+        default="",
+    )
+    sr.add_argument(
+        "--password",
+        help="Password used to authenticate to the Schema Registry.",
+        default="",
+    )
 
-    kr = actions.add_parser('kr-ready', description='Check if Kafka REST Proxy is ready.')
-    kr.add_argument('host', help='Hostname for REST Proxy.')
-    kr.add_argument('port', help='Port for REST Proxy.')
-    kr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
-    kr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
-    kr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
-    kr.add_argument('--username', help='Username used to authenticate to the REST Proxy.', default='')
-    kr.add_argument('--password', help='Password used to authenticate to the REST Proxy.', default='')
+    kr = actions.add_parser(
+        "kr-ready", description="Check if Kafka REST Proxy is ready."
+    )
+    kr.add_argument("host", help="Hostname for REST Proxy.")
+    kr.add_argument("port", help="Port for REST Proxy.")
+    kr.add_argument(
+        "timeout", help="Time in secs to wait for service to be ready.", type=int
+    )
+    kr.add_argument(
+        "--secure", help="Use TLS to secure the connection.", action="store_true"
+    )
+    kr.add_argument(
+        "--ignore_cert", help="Ignore TLS certificate errors.", action="store_true"
+    )
+    kr.add_argument(
+        "--username",
+        help="Username used to authenticate to the REST Proxy.",
+        default="",
+    )
+    kr.add_argument(
+        "--password",
+        help="Password used to authenticate to the REST Proxy.",
+        default="",
+    )
 
-    config = actions.add_parser('listeners', description='Get listeners value from advertised.listeners. Replaces host to 0.0.0.0')
-    config.add_argument('advertised_listeners', help='advertised.listeners string.')
+    config = actions.add_parser(
+        "listeners",
+        description="Get listeners value from advertised.listeners. Replaces host to 0.0.0.0",
+    )
+    config.add_argument("advertised_listeners", help="advertised.listeners string.")
 
-    te = actions.add_parser('ensure-topic', description='Ensure that topic exists and is valid.')
-    te.add_argument('config', help='client config (properties file).')
-    te.add_argument('file', help='YAML file with topic config.')
-    te.add_argument('timeout', help='Time in secs for all operations.', type=int)
-    te.add_argument('--create_if_not_exists', help='Create topics if they do not yet exist.', action='store_true')
+    te = actions.add_parser(
+        "ensure-topic", description="Ensure that topic exists and is valid."
+    )
+    te.add_argument("config", help="client config (properties file).")
+    te.add_argument("file", help="YAML file with topic config.")
+    te.add_argument("timeout", help="Time in secs for all operations.", type=int)
+    te.add_argument(
+        "--create_if_not_exists",
+        help="Create topics if they do not yet exist.",
+        action="store_true",
+    )
 
-    cr = actions.add_parser('connect-ready', description='Check if Connect is ready.')
-    cr.add_argument('host', help='Hostname for Connect worker.')
-    cr.add_argument('port', help='Port for Connect worker.')
-    cr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
-    cr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
-    cr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
-    cr.add_argument('--username', help='Username used to authenticate to the Connect worker.', default='')
-    cr.add_argument('--password', help='Password used to authenticate to the Connect worker.', default='')
+    cr = actions.add_parser("connect-ready", description="Check if Connect is ready.")
+    cr.add_argument("host", help="Hostname for Connect worker.")
+    cr.add_argument("port", help="Port for Connect worker.")
+    cr.add_argument(
+        "timeout", help="Time in secs to wait for service to be ready.", type=int
+    )
+    cr.add_argument(
+        "--secure", help="Use TLS to secure the connection.", action="store_true"
+    )
+    cr.add_argument(
+        "--ignore_cert", help="Ignore TLS certificate errors.", action="store_true"
+    )
+    cr.add_argument(
+        "--username",
+        help="Username used to authenticate to the Connect worker.",
+        default="",
+    )
+    cr.add_argument(
+        "--password",
+        help="Password used to authenticate to the Connect worker.",
+        default="",
+    )
 
-    ksqlr = actions.add_parser('ksql-server-ready', description='Check if KSQL server is ready.')
-    ksqlr.add_argument('host', help='Hostname for KSQL server.')
-    ksqlr.add_argument('port', help='Port for KSQL server.')
-    ksqlr.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
-    ksqlr.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
-    ksqlr.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
-    ksqlr.add_argument('--username', help='Username used to authenticate to the KSQL server.', default='')
-    ksqlr.add_argument('--password', help='Password used to authenticate to the KSQL server.', default='')
+    ksqlr = actions.add_parser(
+        "ksql-server-ready", description="Check if KSQL server is ready."
+    )
+    ksqlr.add_argument("host", help="Hostname for KSQL server.")
+    ksqlr.add_argument("port", help="Port for KSQL server.")
+    ksqlr.add_argument(
+        "timeout", help="Time in secs to wait for service to be ready.", type=int
+    )
+    ksqlr.add_argument(
+        "--secure", help="Use TLS to secure the connection.", action="store_true"
+    )
+    ksqlr.add_argument(
+        "--ignore_cert", help="Ignore TLS certificate errors.", action="store_true"
+    )
+    ksqlr.add_argument(
+        "--username",
+        help="Username used to authenticate to the KSQL server.",
+        default="",
+    )
+    ksqlr.add_argument(
+        "--password",
+        help="Password used to authenticate to the KSQL server.",
+        default="",
+    )
 
-    c3r = actions.add_parser('control-center-ready', description='Check if Confluent Control Center is ready.')
-    c3r.add_argument('host', help='Hostname for Control Center.')
-    c3r.add_argument('port', help='Port for Control Center.')
-    c3r.add_argument('timeout', help='Time in secs to wait for service to be ready.', type=int)
-    c3r.add_argument('--secure', help='Use TLS to secure the connection.', action='store_true')
-    c3r.add_argument('--ignore_cert', help='Ignore TLS certificate errors.', action='store_true')
+    c3r = actions.add_parser(
+        "control-center-ready",
+        description="Check if Confluent Control Center is ready.",
+    )
+    c3r.add_argument("host", help="Hostname for Control Center.")
+    c3r.add_argument("port", help="Port for Control Center.")
+    c3r.add_argument(
+        "timeout", help="Time in secs to wait for service to be ready.", type=int
+    )
+    c3r.add_argument(
+        "--secure", help="Use TLS to secure the connection.", action="store_true"
+    )
+    c3r.add_argument(
+        "--ignore_cert", help="Ignore TLS certificate errors.", action="store_true"
+    )
 
     if len(sys.argv) < 2:
         root.print_help()
@@ -516,20 +674,62 @@ def main():
     if args.action == "zk-ready":
         success = check_zookeeper_ready(args.connect_string, int(args.timeout))
     elif args.action == "kafka-ready":
-        success = check_kafka_ready(int(args.expected_brokers), int(args.timeout), args.config, args.bootstrap_broker_list, args.zookeeper_connect,
-                                    args.security_protocol)
+        success = check_kafka_ready(
+            int(args.expected_brokers),
+            int(args.timeout),
+            args.config,
+            args.bootstrap_broker_list,
+            args.zookeeper_connect,
+            args.security_protocol,
+        )
     elif args.action == "sr-ready":
-        success = check_schema_registry_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert, args.username, args.password)
+        success = check_schema_registry_ready(
+            args.host,
+            args.port,
+            int(args.timeout),
+            args.secure,
+            args.ignore_cert,
+            args.username,
+            args.password,
+        )
     elif args.action == "kr-ready":
-        success = check_kafka_rest_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert, args.username, args.password)
+        success = check_kafka_rest_ready(
+            args.host,
+            args.port,
+            int(args.timeout),
+            args.secure,
+            args.ignore_cert,
+            args.username,
+            args.password,
+        )
     elif args.action == "connect-ready":
-        success = check_connect_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert, args.username, args.password)
+        success = check_connect_ready(
+            args.host,
+            args.port,
+            int(args.timeout),
+            args.secure,
+            args.ignore_cert,
+            args.username,
+            args.password,
+        )
     elif args.action == "ksql-server-ready":
-        success = check_ksql_server_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert, args.username, args.password)
+        success = check_ksql_server_ready(
+            args.host,
+            args.port,
+            int(args.timeout),
+            args.secure,
+            args.ignore_cert,
+            args.username,
+            args.password,
+        )
     elif args.action == "control-center-ready":
-        success = check_control_center_ready(args.host, args.port, int(args.timeout), args.secure, args.ignore_cert)
+        success = check_control_center_ready(
+            args.host, args.port, int(args.timeout), args.secure, args.ignore_cert
+        )
     elif args.action == "ensure-topic":
-        success = ensure_topic(args.config, args.file, int(args.timeout), args.create_if_not_exists)
+        success = ensure_topic(
+            args.config, args.file, int(args.timeout), args.create_if_not_exists
+        )
     elif args.action == "listeners":
         listeners = get_kafka_listeners(args.advertised_listeners)
         if listeners:

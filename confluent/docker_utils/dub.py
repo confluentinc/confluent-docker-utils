@@ -80,19 +80,19 @@ def env_to_props(env_prefix, prop_prefix, exclude=[]):
         Map of matching properties.
     """
     props = {}
-    for (env_name, val) in os.environ.items():
+    for env_name, val in os.environ.items():
         # Regular expression explanation:
         #  Start with NOT underscore (without being part of the match)
         #  Underscore (matched)
         #  End with NOT underscore (without being part of the match)
         # Matches X_X, but not Y__Y or Z___Z
-        pattern = re.compile('(?<=[^_])_(?=[^_])')
+        pattern = re.compile("(?<=[^_])_(?=[^_])")
 
         if env_name not in exclude and env_name.startswith(env_prefix):
-            raw_name = env_name[len(env_prefix):].lower()
-            prop_dot = '.'.join(pattern.split(raw_name))
-            prop_dash = '-'.join(prop_dot.split('___'))
-            prop_underscore = '_'.join(prop_dash.split('__'))
+            raw_name = env_name[len(env_prefix) :].lower()
+            prop_dot = ".".join(pattern.split(raw_name))
+            prop_dash = "-".join(prop_dot.split("___"))
+            prop_underscore = "_".join(prop_dash.split("__"))
             prop_name = prop_prefix + prop_underscore
             props[prop_name] = val
     return props
@@ -171,28 +171,33 @@ def check_http_ready(url, timeout):
     splitted = parsed.netloc.split(":", 1)
     host = "localhost"
     if len(splitted) > 0:
-      host = parsed.netloc.split(":", 1)[0]
+        host = parsed.netloc.split(":", 1)[0]
     port = 80
     if len(splitted) > 1:
-      port = parsed.netloc.split(":", 1)[1]
+        port = parsed.netloc.split(":", 1)[1]
     else:
-      if parsed.scheme == "https":
-        port = 443
+        if parsed.scheme == "https":
+            port = 443
 
     # Check if you can connect to the endpoint
     status = wait_for_service(host, port, timeout)
 
     if status:
-
         # Check if service is responding as expected
         r = requests.get(url)
         if r.status_code // 100 == 2:
             return True
         else:
-            print("Unexpected response for %s, with code: %s and content: %s" % (str(url), str(r.status_code), str(r.text)), file=sys.stderr)
+            print(
+                "Unexpected response for %s, with code: %s and content: %s"
+                % (str(url), str(r.status_code), str(r.text)),
+                file=sys.stderr,
+            )
             return False
     else:
-        print("%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr)
+        print(
+            "%s cannot be reached on port %s." % (str(host), str(port)), file=sys.stderr
+        )
         return False
 
 
@@ -211,7 +216,12 @@ def check_path_for_permissions(path, mode):
         Returns True if path has the required permissions, False otherwise.
 
     """
-    string_to_mode_map = {"writable": os.W_OK, "readable": os.R_OK, "executable": os.X_OK, "exists": os.F_OK}
+    string_to_mode_map = {
+        "writable": os.W_OK,
+        "readable": os.R_OK,
+        "executable": os.X_OK,
+        "exists": os.F_OK,
+    }
     return os.access(path, string_to_mode_map[mode])
 
 
@@ -288,12 +298,10 @@ def fill_and_write_template(template_file, output_file, context=os.environ):
 
     """
     try:
-        j2_env = Environment(
-            loader=FileSystemLoader(searchpath="/"),
-            trim_blocks=True)
-        j2_env.globals['parse_log4j_loggers'] = parse_log4j_loggers
-        j2_env.globals['env_to_props'] = env_to_props
-        with open(output_file, 'w') as f:
+        j2_env = Environment(loader=FileSystemLoader(searchpath="/"), trim_blocks=True)
+        j2_env.globals["parse_log4j_loggers"] = parse_log4j_loggers
+        j2_env.globals["env_to_props"] = env_to_props
+        with open(output_file, "w") as f:
             template = j2_env.get_template(template_file)
             f.write(template.render(env=context))
 
@@ -304,36 +312,58 @@ def fill_and_write_template(template_file, output_file, context=os.environ):
 
 
 def main():
-    root = argparse.ArgumentParser(description='Docker Utility Belt.')
+    root = argparse.ArgumentParser(description="Docker Utility Belt.")
 
-    actions = root.add_subparsers(help='Actions', dest='action')
+    actions = root.add_subparsers(help="Actions", dest="action")
 
-    template = actions.add_parser('template', description='Generate template from env vars.')
-    template.add_argument('input', help='Path to template file.')
-    template.add_argument('output', help='Path of output file.')
+    template = actions.add_parser(
+        "template", description="Generate template from env vars."
+    )
+    template.add_argument("input", help="Path to template file.")
+    template.add_argument("output", help="Path of output file.")
 
-    check_env = actions.add_parser('ensure', description='Check if env var exists.')
-    check_env.add_argument('name', help='Name of env var.')
+    check_env = actions.add_parser("ensure", description="Check if env var exists.")
+    check_env.add_argument("name", help="Name of env var.")
 
-    check_env = actions.add_parser('ensure-atleast-one', description='Check if env var exists.')
-    check_env.add_argument('names', nargs='*', help='Names of env var.')
+    check_env = actions.add_parser(
+        "ensure-atleast-one", description="Check if env var exists."
+    )
+    check_env.add_argument("names", nargs="*", help="Names of env var.")
 
-    check_env = actions.add_parser('wait', description='Wait for network service to appear.')
-    check_env.add_argument('host', help='Host.')
-    check_env.add_argument('port', help='Port.', type=int)
-    check_env.add_argument('timeout', help='timeout in secs.', type=float)
+    check_env = actions.add_parser(
+        "wait", description="Wait for network service to appear."
+    )
+    check_env.add_argument("host", help="Host.")
+    check_env.add_argument("port", help="Port.", type=int)
+    check_env.add_argument("timeout", help="timeout in secs.", type=float)
 
-    check_env = actions.add_parser('http-ready', description='Wait for an HTTP/HTTPS URL to be retrievable.')
-    check_env.add_argument('url', help='URL to retrieve. Expected HTTP status code: 2xx.')
-    check_env.add_argument('timeout', help='Time in secs to wait for the URL to be retrievable.', type=float)
+    check_env = actions.add_parser(
+        "http-ready", description="Wait for an HTTP/HTTPS URL to be retrievable."
+    )
+    check_env.add_argument(
+        "url", help="URL to retrieve. Expected HTTP status code: 2xx."
+    )
+    check_env.add_argument(
+        "timeout",
+        help="Time in secs to wait for the URL to be retrievable.",
+        type=float,
+    )
 
-    check_env = actions.add_parser('path', description='Check for path permissions and existence.')
-    check_env.add_argument('path', help='Full path.')
-    check_env.add_argument('mode', help='One of [writable, readable, executable, exists].', choices=['writable', 'readable', 'executable', 'exists'])
+    check_env = actions.add_parser(
+        "path", description="Check for path permissions and existence."
+    )
+    check_env.add_argument("path", help="Full path.")
+    check_env.add_argument(
+        "mode",
+        help="One of [writable, readable, executable, exists].",
+        choices=["writable", "readable", "executable", "exists"],
+    )
 
-    check_env = actions.add_parser('path-wait', description='Wait for a path to exist')
-    check_env.add_argument('path', help='Full path.')
-    check_env.add_argument('timeout', help='Time in secs to wait for the path to exist.', type=float)
+    check_env = actions.add_parser("path-wait", description="Wait for a path to exist")
+    check_env.add_argument("path", help="Full path.")
+    check_env.add_argument(
+        "timeout", help="Time in secs to wait for the path to exist.", type=float
+    )
 
     if len(sys.argv) < 2:
         root.print_help()

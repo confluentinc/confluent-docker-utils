@@ -1,0 +1,73 @@
+load("@confluent_rules//python:python_library.bzl", "py_library")
+load("@confluent_rules//python/pip:rules.bzl", "assemble_pip", "deploy_pip")
+load("@rules_python//python:pip.bzl", "compile_pip_requirements")
+
+genrule(
+    name = "generate_requirements_extra_in",
+    srcs = [
+        "requirements.txt",
+        "requirements-test.txt",
+    ],
+    outs = ["requirements.in"],
+    cmd = "cat 'requirements.txt' > $@ && cat requirements-test.txt >> $@",
+)
+
+compile_pip_requirements(
+    name = "requirements",
+    timeout = "moderate",  # timeout for requirements_test
+    env = {
+        "PIP_CONFIG_FILE": "~/.config/pip/pip.conf",
+    },
+    extra_args = [
+        "--allow-unsafe",
+        "--no-emit-index-url",
+    ],
+    requirements_in = "requirements.in",
+    requirements_txt = "requirements_lock.txt",
+    tags = ["manual"],
+)
+
+filegroup(
+    name = "flake8_config",
+    srcs = [
+        ".flake8",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_library(
+    name = "docker_utils_lib",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//confluent/docker_utils"
+    ],
+)
+
+assemble_pip(
+    name = "docker_utils_assemble",
+    package_name = "confluent-docker-utils",
+    author = "Confluent, Inc.",
+    author_email = "partner-support@confluent.io",
+    classifiers = ["OS :: OS Independent"],
+    description = "Common utils for Docker image sanity tests.",
+    entry_points = {
+        "console_scripts": [
+            "cub = confluent.docker_utils.cub:main",
+            "dub = confluent.docker_utils.dub:main",
+        ],
+    },
+    keywords = ["keyword"],
+    license = "license",
+    long_description_file = "README.md",
+    python_requires = ">=3",
+    requirements_file = "requirements.txt",
+    target = "docker_utils_lib",
+    url = "https://github.com/confluentinc/confluent-docker-utils",
+    version_file = "version_file.txt",
+)
+
+deploy_pip(
+    name = "release",
+    pypi_profile = "codeartifact",
+    target = "docker_utils_assemble",
+)

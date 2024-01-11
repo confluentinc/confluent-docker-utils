@@ -1,0 +1,24 @@
+load("@confluent_rules//python:python_test.bzl", "py_test")
+load("@pip//:requirements.bzl", "requirement")
+
+linters_config = {
+    "flake8": ["//:flake8_config"],
+}
+
+py_test(
+    name = "docker_utils_test",
+    timeout = "long",
+    srcs = glob(["*.py"]),
+    config = linters_config,
+    main = "test/__test__.py",
+    python_linters = [
+        "flake8",
+    ],
+    deps = [
+        "//confluent/docker_utils",
+        requirement("pytest"),
+        requirement("pytest-xdist"),
+        requirement("pytest-cov"),
+        requirement("mock"),
+    ],
+)

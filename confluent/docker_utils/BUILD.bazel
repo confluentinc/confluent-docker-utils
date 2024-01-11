@@ -1,0 +1,23 @@
+load("@confluent_rules//python:python_library.bzl", "py_library")
+load("@pip//:requirements.bzl", "requirement")
+
+linters_config = {
+    "flake8": ["//:flake8_config"],
+}
+
+py_library(
+    name = "docker_utils",
+    srcs = glob(["*.py"]),
+    visibility = ["//:__subpackages__"],
+    config = linters_config,
+    deps = [
+        requirement("boto3"),
+        requirement("paramiko"),
+        requirement("docker"),
+        requirement("docker-compose"),
+        requirement("Jinja2"),
+        requirement("markupsafe"),
+        requirement("requests"),
+        requirement("cryptography"),
+    ],
+)

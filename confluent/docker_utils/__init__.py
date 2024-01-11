@@ -18,11 +18,11 @@ def api_client():
 
 def ecr_login():
     # see docker/docker-py#1677
-    ecr = boto3.client('ecr')
+    ecr = boto3.client("ecr")
     login = ecr.get_authorization_token()
-    b64token = login['authorizationData'][0]['authorizationToken'].encode('utf-8')
-    username, password = base64.b64decode(b64token).decode('utf-8').split(':')
-    registry = login['authorizationData'][0]['proxyEndpoint']
+    b64token = login["authorizationData"][0]["authorizationToken"].encode("utf-8")
+    username, password = base64.b64decode(b64token).decode("utf-8").split(":")
+    registry = login["authorizationData"][0]["proxyEndpoint"]
     client = docker.from_env()
     client.login(username, password, registry=registry)
 
@@ -37,7 +37,7 @@ def build_image(image_name, dockerfile_dir):
 
 def image_exists(image_name):
     client = api_client()
-    tags = [t for image in client.images() for t in image['RepoTags'] or []]
+    tags = [t for image in client.images() for t in image["RepoTags"] or []]
     return image_name in tags
 
 
@@ -78,7 +78,8 @@ def run_command_on_host(command):
     logs = run_docker_command(
         image="busybox",
         command=command,
-        host_config={'NetworkMode': 'host', 'Binds': ['/tmp:/tmp']})
+        host_config={"NetworkMode": "host", "Binds": ["/tmp:/tmp"]},
+    )
     print("Running command %s: %s" % (command, logs))
     return logs
 
@@ -109,14 +110,14 @@ def add_registry_and_tag(image, scope=""):
     if scope:
         scope += "_"
 
-    return "{0}{1}:{2}".format(os.environ.get("DOCKER_{0}REGISTRY".format(scope), ""),
-                               image,
-                               os.environ.get("DOCKER_{0}TAG".format(scope), "latest")
-                               )
+    return "{0}{1}:{2}".format(
+        os.environ.get("DOCKER_{0}REGISTRY".format(scope), ""),
+        image,
+        os.environ.get("DOCKER_{0}TAG".format(scope), "latest"),
+    )
 
 
 class TestContainer(Container):
-
     def state(self):
         return self.inspect_container["State"]
 
@@ -135,12 +136,14 @@ class TestContainer(Container):
         return self.client.wait(self.id, timeout)
 
 
-class TestCluster():
-
+class TestCluster:
     def __init__(self, name, working_dir, config_file):
         config_file_path = os.path.join(working_dir, config_file)
         cfg_file = ConfigFile.from_filename(config_file_path)
-        c = ConfigDetails(working_dir, [cfg_file],)
+        c = ConfigDetails(
+            working_dir,
+            [cfg_file],
+        )
         self.cd = load(c)
         self.name = name
 
@@ -199,6 +202,8 @@ class TestCluster():
     def run_command_on_all(self, command):
         results = {}
         for container in self.get_project().containers():
-            results[container.name_without_project] = self.run_command(command, container)
+            results[container.name_without_project] = self.run_command(
+                command, container
+            )
 
         return results
