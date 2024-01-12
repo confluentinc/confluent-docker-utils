@@ -49,7 +49,7 @@ blocks:
             - bumpversion $ARGS
             - LATEST_TAG=$(git describe --tags --abbrev=0)
             - echo "LATEST_TAG - $LATEST_TAG"
-            - git diff $SEMAPHORE_GIT_BRANCH
+            - git diff
             - git commit --amend -C HEAD
             - git tag -f $LATEST_TAG
             - rm -rf dist/*
