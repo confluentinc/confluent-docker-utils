@@ -41,12 +41,12 @@ blocks:
             - git checkout $SEMAPHORE_GIT_BRANCH
             - git reset --hard
             - VERSION_STRING=$(grep 'version\s*=\s*' setup.py || true)
-            #- >-
-            #  if [ -z "$VERSION_STRING" ]; then
-            #      SETUP_FILE="setup.cfg"
-            #  else
-            #      SETUP_FILE="setup.py"
-            #  fi
+            - >-
+              if [ -z "$VERSION_STRING" ]; then
+                  SETUP_FILE="setup.cfg"
+              else
+                  SETUP_FILE="setup.py"
+              fi
             #- ARGS=(patch \"$SETUP_FILE\" --tag --verbose --commit --message \"$COMMIT_MESSAGE_PREFIX {new_version}\")
             #- LATEST_TAG=$(git describe --tags --abbrev=0)
             #- echo "LATEST_TAG: $LATEST_TAG"
