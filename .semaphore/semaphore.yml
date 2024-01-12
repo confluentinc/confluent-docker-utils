@@ -1,0 +1,56 @@
+version: v1.0
+name: confluent-docker-utils
+agent:
+  machine:
+    type: s1-prod-ubuntu20-04-amd64-1
+execution_time_limit:
+  minutes: 30
+global_job_config:
+  prologue:
+    commands:
+      - checkout
+      - sem-version python 3.8
+      - pip install tox
+      - COMMIT_MESSAGE_PREFIX="Publish version"
+      - LAST_COMMIT_MESSAGE=$(git log -1 --oneline --format="%ae %s")
+      - >- 
+        if [[ "$LAST_COMMIT_MESSAGE" =~ "semaphore@confluent.io $COMMIT_MESSAGE_PREFIX" ]]; then
+          echo "Skipping publish for changes from a Semaphore Version Bump"
+          exit 0
+        fi
+blocks:
+  - name: "Tests"
+    dependencies: []
+    task:
+      jobs:
+        - name: "Tests"
+          commands:
+            - tox
+  - name: "Release"
+    dependencies: ["Tests"]
+    task:
+      jobs:
+        - name: "Release"
+          commands:
+            - VIRTUAL_ENV=/tmp/publish
+            - echo $VIRTUAL_ENV
+            - echo $COMMIT_MESSAGE_PREFIX
+            - python3 -m venv $VIRTUAL_ENV
+            - source $VIRTUAL_ENV/bin/activate
+            - pip install wheel==0.33.1 bumpversion==0.5.3 Mako==1.0.8 MarkupSafe==1.1.1
+            - git checkout $SEMAPHORE_GIT_BRANCH
+            - git reset --hard
+            - VERSION_STRING=$(grep 'version\s*=\s*' setup.py || true)
+            - >-
+              if [ -z "$VERSION_STRING" ]; then
+                  SETUP_FILE="setup.cfg"
+              else
+                  SETUP_FILE="setup.py"
+              fi
+            - ARGS=(patch \"$SETUP_FILE\" --tag --verbose --commit --message \"$COMMIT_MESSAGE_PREFIX {new_version}\")
+            - LATEST_TAG=$(git describe --tags --abbrev=0)
+            - echo "LATEST_TAG: $LATEST_TAG"
+            - git commit --amend -C HEAD
+            #- git tag -f $LATEST_TAG
+            #- rm -rf dist/*
+            #- python setup.py sdist bdist_wheel
