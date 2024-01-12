@@ -11,13 +11,8 @@ global_job_config:
       - checkout
       - sem-version python 3.8
       - pip install tox
-      - COMMIT_MESSAGE_PREFIX="Publish version"
+      - COMMIT_MESSAGE_PREFIX="[ci skip] Publish version"
       - LAST_COMMIT_MESSAGE=$(git log -1 --oneline --format="%ae %s")
-      - >- 
-        if [[ "$LAST_COMMIT_MESSAGE" =~ "semaphore@confluent.io $COMMIT_MESSAGE_PREFIX" ]]; then
-          echo "Skipping publish for changes from a Semaphore Version Bump"
-          exit 0
-        fi
 blocks:
   - name: "Tests"
     dependencies: []
@@ -28,8 +23,8 @@ blocks:
             - tox
   - name: "Release"
     dependencies: ["Tests"]
-    run:
-      when: "branch = 'master'"
+    #run:
+    #  when: "branch = 'master'"
     task:
       jobs:
         - name: "Release"
@@ -53,5 +48,5 @@ blocks:
             - git commit --amend -C HEAD
             - git tag -f $LATEST_TAG
             - rm -rf dist/*
-            - python setup.py sdist bdist_wheel
-            - git push origin $SEMAPHORE_GIT_BRANCH $LATEST_TAG
+            #- python setup.py sdist bdist_wheel
+            #- git push origin $SEMAPHORE_GIT_BRANCH $LATEST_TAG
