@@ -1,0 +1,21 @@
+version: v1.0
+name: confluent-docker-utils
+agent:
+  machine:
+    type: s1-prod-ubuntu20-04-amd64-1
+execution_time_limit:
+  minutes: 30
+global_job_config:
+  prologue:
+    commands:
+      - checkout
+      - pip install tox
+      - sem-version python 3.8
+blocks:
+  - name: "Tests"
+    dependencies: []
+    task:
+      jobs:
+        - name: "Tests"
+          commands:
+            - tox
