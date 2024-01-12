@@ -11,7 +11,6 @@ global_job_config:
       - checkout
       - sem-version python 3.8
       - pip install tox
-      - echo $SEMAPHORE_GIT_BRANCH
       - COMMIT_MESSAGE_PREFIX="Publish version"
       - LAST_COMMIT_MESSAGE=$(git log -1 --oneline --format="%ae %s")
       - >- 
@@ -55,3 +54,4 @@ blocks:
             - git tag -f $LATEST_TAG
             - rm -rf dist/*
             - python setup.py sdist bdist_wheel
+            - git push origin $SEMAPHORE_GIT_BRANCH $LATEST_TAG
