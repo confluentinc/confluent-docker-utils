@@ -5,4 +5,5 @@ python {
   nodeLabel = 'docker-ubuntu-20-kiosk'
   usesDockerForTesting = true
   dockerPush = false
+  publish = false
 }
