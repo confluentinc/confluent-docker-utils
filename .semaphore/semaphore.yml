@@ -9,8 +9,8 @@ global_job_config:
   prologue:
     commands:
       - checkout
-      - pip install tox
       - sem-version python 3.8
+      - pip install tox
 blocks:
   - name: "Tests"
     dependencies: []
