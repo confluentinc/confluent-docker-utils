@@ -1,17 +1,15 @@
 version: v1.0
-name: cc-billing-worker
+name: confluent-docker-utils
 agent:
   machine:
-    type: s1-prod-ubuntu20-04-amd64-2
+    type: s1-prod-ubuntu20-04-amd64-1
 execution_time_limit:
-  minutes: 90
+  minutes: 30
 global_job_config:
-  env_vars:
-    - name: SEMAPHORE_TRIGGER_SOURCE
-      value: push
   prologue:
     commands:
       - checkout
+      - pip install tox
 blocks:
   - name: "Tests"
     dependencies: []
