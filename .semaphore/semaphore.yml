@@ -33,8 +33,6 @@ blocks:
         - name: "Release"
           commands:
             - VIRTUAL_ENV=/tmp/publish
-            - echo $VIRTUAL_ENV
-            - echo $COMMIT_MESSAGE_PREFIX
             - python3 -m venv $VIRTUAL_ENV
             - source $VIRTUAL_ENV/bin/activate
             - pip install wheel==0.33.1 bumpversion==0.5.3 Mako==1.0.8 MarkupSafe==1.1.1
@@ -51,6 +49,7 @@ blocks:
             - bumpversion $ARGS
             - LATEST_TAG=$(git describe --tags --abbrev=0)
             - echo "LATEST_TAG - $LATEST_TAG"
+            - git diff $SEMAPHORE_GIT_BRANCH
             - git commit --amend -C HEAD
             - git tag -f $LATEST_TAG
             - rm -rf dist/*
