@@ -10,7 +10,7 @@ global_job_config:
     commands:
       - checkout
       - sem-version python 3.8
-      - pip install tox
+      - pip install tox twine==4.0.2
       - COMMIT_MESSAGE_PREFIX="[ci skip] Publish version"
 blocks:
   - name: "Tests"
@@ -31,7 +31,7 @@ blocks:
             - VIRTUAL_ENV=/tmp/publish
             - python3 -m venv $VIRTUAL_ENV
             - source $VIRTUAL_ENV/bin/activate
-            - pip install wheel==0.33.1 bumpversion==0.5.3 Mako==1.0.8 MarkupSafe==1.1.1
+            - pip install wheel==0.33.1 bumpversion==0.5.3 Mako==1.0.8 MarkupSafe==1.1.1 twine==4.0.2
             - git checkout $SEMAPHORE_GIT_BRANCH
             - git reset --hard
             - VERSION_STRING=$(grep 'version\s*=\s*' setup.py || true)
