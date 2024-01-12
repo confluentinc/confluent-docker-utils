@@ -47,7 +47,7 @@ blocks:
               else
                   SETUP_FILE="setup.py"
               fi
-            #- ARGS=(patch \"$SETUP_FILE\" --tag --verbose --commit --message \"$COMMIT_MESSAGE_PREFIX {new_version}\")
+            - ARGS=(patch \"$SETUP_FILE\" --tag --verbose --commit --message \"$COMMIT_MESSAGE_PREFIX {new_version}\")
             #- LATEST_TAG=$(git describe --tags --abbrev=0)
             #- echo "LATEST_TAG: $LATEST_TAG"
             #- git commit --amend -C HEAD
