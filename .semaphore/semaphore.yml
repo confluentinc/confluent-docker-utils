@@ -33,14 +33,14 @@ blocks:
         - name: "Release"
           commands:
             - VIRTUAL_ENV=/tmp/publish
-            #- echo $VIRTUAL_ENV
-            #- echo $COMMIT_MESSAGE_PREFIX
-            #- python3 -m venv $VIRTUAL_ENV
-            #- source $VIRTUAL_ENV/bin/activate
-            #- pip install wheel==0.33.1 bumpversion==0.5.3 Mako==1.0.8 MarkupSafe==1.1.1
-            #- git checkout $SEMAPHORE_GIT_BRANCH
-            #- git reset --hard
-            #- VERSION_STRING=$(grep 'version\s*=\s*' setup.py || true)
+            - echo $VIRTUAL_ENV
+            - echo $COMMIT_MESSAGE_PREFIX
+            - python3 -m venv $VIRTUAL_ENV
+            - source $VIRTUAL_ENV/bin/activate
+            - pip install wheel==0.33.1 bumpversion==0.5.3 Mako==1.0.8 MarkupSafe==1.1.1
+            - git checkout $SEMAPHORE_GIT_BRANCH
+            - git reset --hard
+            - VERSION_STRING=$(grep 'version\s*=\s*' setup.py || true)
             #- >-
             #  if [ -z "$VERSION_STRING" ]; then
             #      SETUP_FILE="setup.cfg"
