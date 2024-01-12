@@ -42,7 +42,7 @@ blocks:
             - git reset --hard
             - VERSION_STRING=$(grep 'version\s*=\s*' setup.py || true)
             - >-
-              if [ -z "${version_string}" ]; then
+              if [ -z "$VERSION_STRING" ]; then
                   SETUP_FILE="setup.cfg"
               else
                   SETUP_FILE="setup.py"
