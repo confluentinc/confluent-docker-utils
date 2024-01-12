@@ -10,7 +10,7 @@ global_job_config:
     commands:
       - checkout
       - sem-version python 3.8
-      - pip install tox twine==4.0.2
+      - pip install tox
       - COMMIT_MESSAGE_PREFIX="[ci skip] Publish version"
 blocks:
   - name: "Tests"
