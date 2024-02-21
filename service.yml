@@ -3,6 +3,10 @@ lang: unknown
 lang_version: unknown
 git:
   enable: true
-semaphore: 
+semaphore:
   enable: true
   pipeline_enable: false
+code_artifact:
+  enable: true
+  package_paths:
+    - pypi-internal/pypi//confluent-docker-utils
