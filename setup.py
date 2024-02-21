@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='confluent-docker-utils',
-    version='0.0.74',
+    version='0.0.75',
 
     author="Confluent, Inc.",
     author_email="partner-support@confluent.io",
