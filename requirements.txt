@@ -1,11 +1,11 @@
 boto3~=1.17
 paramiko~=3.4.0
-docker~=7.0.0
+docker~=7.1.0
 docker-compose~=1.29
 Jinja2~=3.1.4
 markupsafe~=2.0.1
 mock~=4.0
-requests~=2.31.0
+requests~=2.32.2
 cryptography~=42.0.4
 PyYAML~=5.4.1
 idna==3.7
