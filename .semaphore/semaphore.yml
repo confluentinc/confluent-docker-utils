@@ -31,7 +31,7 @@ blocks:
             - VIRTUAL_ENV=/tmp/publish
             - python3 -m venv $VIRTUAL_ENV
             - source $VIRTUAL_ENV/bin/activate
-            - pip install wheel==0.33.1 bumpversion==0.5.3 Mako==1.0.8 MarkupSafe==1.1.1 twine==4.0.2
+            - pip install -r test-requirements.txt
             - git checkout $SEMAPHORE_GIT_BRANCH
             - git reset --hard
             - VERSION_STRING=$(grep 'version\s*=\s*' setup.py || true)
