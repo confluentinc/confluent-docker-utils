@@ -48,5 +48,6 @@ blocks:
             - git tag -f $LATEST_TAG
             - rm -rf dist/*
             - python setup.py sdist bdist_wheel
+            - git push origin $SEMAPHORE_GIT_BRANCH
+            - git push origin $LATEST_TAG
             - twine upload --repository codeartifact dist/*
-            - git push origin $SEMAPHORE_GIT_BRANCH $LATEST_TAG
