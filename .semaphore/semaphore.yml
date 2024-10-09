@@ -34,14 +34,9 @@ blocks:
             - pip install -r test-requirements.txt
             - git checkout $SEMAPHORE_GIT_BRANCH
             - git reset --hard
-            - VERSION_STRING=$(grep 'version\s*=\s*' setup.py || true)
-            - >-
-              if [ -z "$VERSION_STRING" ]; then
-                  SETUP_FILE="setup.cfg"
-              else
-                  SETUP_FILE="setup.py"
-              fi
-            - bumpversion patch $SETUP_FILE --tag --verbose --commit --message "$COMMIT_MESSAGE_PREFIX {new_version}"
+            - setup_file="setup.py"
+            - current_version=$(python $setup_file --version)
+            - bumpversion patch $setup_file --tag --verbose --commit --message "$COMMIT_MESSAGE_PREFIX {new_version}" --current-version $current_version
             - LATEST_TAG=$(git describe --tags --abbrev=0)
             - echo "LATEST_TAG - $LATEST_TAG"
             - git commit --amend -C HEAD
