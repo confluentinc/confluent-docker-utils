@@ -1,4 +1,4 @@
-boto3==1.35.38
+boto3==1.35.39
 docker==7.1.0
 docker-compose==1.29.2
 Jinja2==3.1.4
