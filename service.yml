@@ -1,6 +1,10 @@
 name: confluent-docker-utils
 lang: unknown
 lang_version: unknown
+renovatebot:
+  enable: true
+  automerge:
+    enable: true
 git:
   enable: true
 semaphore:
