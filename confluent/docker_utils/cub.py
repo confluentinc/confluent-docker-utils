@@ -45,7 +45,8 @@ from requests.auth import HTTPBasicAuth
 import subprocess
 
 CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"')
-DEFAULT_LOG4J_FILE = "/etc/cp-base-new/log4j.properties"
+LOG4J2_FILE_NAME = "log4j2.yaml"
+DEFAULT_LOG4J2_FILE = f"/etc/cp-base-new/{LOG4J2_FILE_NAME}"
 
 
 def wait_for_service(host, port, timeout):
@@ -94,14 +95,14 @@ def __request(host, port, secure, ignore_cert, username='', password='', path=''
     auth = HTTPBasicAuth(username, password) if (username or password) else None
     return requests.get(url, verify = not ignore_cert, auth = auth)
 
-def log4j_config_file():
-    config_file = DEFAULT_LOG4J_FILE
+def log4j2_config_file():
+    config_file = DEFAULT_LOG4J2_FILE
     # check component_config exists, else default to cp-base-new
     if os.environ.get("COMPONENT"):
-        component_config = "/etc/" + os.environ.get("COMPONENT") + "/log4j.properties"
+        component_config = "/etc/" + os.environ.get("COMPONENT") + "/" + LOG4J2_FILE_NAME
         if os.path.exists(component_config):
             config_file = component_config
-    print(f'Using log4j config {config_file}')
+    print(f'Using log4j2 config {config_file}')
     return config_file
 
 def check_zookeeper_ready(connect_string, timeout):
@@ -121,7 +122,7 @@ def check_zookeeper_ready(connect_string, timeout):
     cmd_template = """
              java {jvm_opts} \
                  -cp {classpath} \
-                 -Dlog4j.configuration=file:{log4j_config} \
+                 -Dlog4j2.configurationFile={log4j_config} \
                  io.confluent.admin.utils.cli.ZookeeperReadyCommand \
                  {connect_string} \
                  {timeout_in_ms}"""
@@ -139,7 +140,7 @@ def check_zookeeper_ready(connect_string, timeout):
     cmd = cmd_template.format(
         classpath=CLASSPATH,
         jvm_opts=jvm_opts or "",
-        log4j_config=log4j_config_file(),
+        log4j_config=log4j2_config_file(),
         connect_string=connect_string,
         timeout_in_ms=timeout * 1000)
 
@@ -181,7 +182,7 @@ def check_kafka_ready(expected_brokers, timeout, config, bootstrap_broker_list=N
     cmd = cmd_template.format(
         classpath=CLASSPATH,
         jvm_opts=os.environ.get("KAFKA_OPTS") or "",
-        log4j_config=log4j_config_file(),
+        log4j_config=log4j2_config_file(),
         bootstrap_broker_list=bootstrap_broker_list,
         expected_brokers=expected_brokers,
         timeout_in_ms=timeout * 1000)
@@ -420,7 +421,7 @@ def ensure_topic(config, file, timeout, create_if_not_exists):
     cmd = cmd_template.format(
         classpath=CLASSPATH,
         jvm_opts=os.environ.get("KAFKA_OPTS") or "",
-        log4j_config=log4j_config_file(),
+        log4j_config=log4j2_config_file(),
         config=config,
         file=file,
         timeout_in_ms=timeout * 1000,
