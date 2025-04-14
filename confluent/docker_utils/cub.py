@@ -101,7 +101,8 @@ def __request(host, port, secure, ignore_cert, username='', password='', path=''
 
 
 def use_log4j2():
-    return os.environ.get("USE_LOG4J_2", None) is not None
+    use_log4j_2 = os.getenv("USE_LOG4J_2", "False")
+    return use_log4j_2.lower() == "true"
 
 
 def log4j_config_arg():
