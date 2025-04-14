@@ -5,7 +5,7 @@ import pytest
 
 import confluent.docker_utils as utils
 import confluent.docker_utils.dub as dub
-
+from confluent.docker_utils import cub
 
 OFFICIAL_IMAGE = "confluentinc/cp-base:latest"
 
@@ -101,3 +101,21 @@ def test_run_docker_command(official_image):
     expected = b'OpenJDK Runtime Environment (Zulu 8.'
     output = utils.run_docker_command(image=OFFICIAL_IMAGE, command=cmd)
     assert expected in output
+
+
+def test_log4j_config_arg_for_log4j_v1():
+    assert cub.log4j_config_arg() == '-Dlog4j.configuration'
+
+
+def test_log4j_config_arg_for_log4j_v2():
+    with patch('confluent.docker_utils.cub.use_log4j2', return_value=True):
+        assert cub.log4j_config_arg() == '-Dlog4j2.configurationFile'
+
+
+def test_log4j_config_file_for_log4j_v1():
+    assert cub.log4j2_config_file() == "file:/etc/cp-base-new/log4j.properties"
+
+
+def test_log4j_config_file_for_log4j_v2():
+    with patch('confluent.docker_utils.cub.use_log4j2', return_value=True):
+        assert cub.log4j2_config_file() == "/etc/cp-base-new/log4j2.yaml"
