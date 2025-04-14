@@ -7,7 +7,7 @@ import confluent.docker_utils as utils
 import confluent.docker_utils.dub as dub
 
 
-OFFICIAL_IMAGE = "confluentinc/cp-base-new:latest"
+OFFICIAL_IMAGE = "confluentinc/cp-base:latest"
 
 
 def test_imports():
