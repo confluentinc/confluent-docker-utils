@@ -1,6 +1,6 @@
 boto3==1.36.6
 docker==7.1.0
-docker-compose==1.29.2
+docker-compose==2.39.2
 Jinja2==3.1.6
 requests==2.32.4
 
