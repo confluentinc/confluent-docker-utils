@@ -4,16 +4,15 @@ import subprocess
 
 import boto3
 import docker
-from compose.config.config import ConfigDetails, ConfigFile, load
-from compose.container import Container
-from compose.project import Project
-from compose.service import ImageType
-from compose.cli.docker_client import docker_client
-from compose.config.environment import Environment
+from .compose_replacement import (
+    ComposeConfig, ComposeProject, ComposeContainer, 
+    create_docker_client
+)
 
 
 def api_client():
-    return docker.from_env().api
+    """Get Docker client compatible with both legacy and new usage."""
+    return docker.from_env()
 
 
 def ecr_login():
@@ -30,21 +29,24 @@ def ecr_login():
 def build_image(image_name, dockerfile_dir):
     print("Building image %s from %s" % (image_name, dockerfile_dir))
     client = api_client()
-    output = client.build(dockerfile_dir, rm=True, tag=image_name)
-    response = "".join(["     %s" % (line,) for line in output])
+    image, build_logs = client.images.build(path=dockerfile_dir, rm=True, tag=image_name)
+    response = "".join(["     %s" % (line.get('stream', '')) for line in build_logs if 'stream' in line])
     print(response)
 
 
 def image_exists(image_name):
     client = api_client()
-    tags = [t for image in client.images() for t in image['RepoTags'] or []]
-    return image_name in tags
+    try:
+        client.images.get(image_name)
+        return True
+    except docker.errors.ImageNotFound:
+        return False
 
 
 def pull_image(image_name):
     client = api_client()
     if not image_exists(image_name):
-        client.pull(image_name)
+        client.images.pull(image_name)
 
 
 def run_docker_command(timeout=None, **kwargs):
@@ -115,90 +117,166 @@ def add_registry_and_tag(image, scope=""):
                                )
 
 
-class TestContainer(Container):
-
+class TestContainer(ComposeContainer):
+    """Extended container class for testing purposes."""
+    
+    def __init__(self, container):
+        super().__init__(container)
+    
+    @classmethod
+    def create(cls, client, **kwargs):
+        """Create a new container using Docker SDK."""
+        # Extract Docker SDK compatible parameters
+        image = kwargs.get('image')
+        command = kwargs.get('command')
+        labels = kwargs.get('labels', {})
+        host_config = kwargs.get('host_config', {})
+        
+        # Create container configuration
+        container_config = {
+            'image': image,
+            'command': command,
+            'labels': labels,
+            'detach': True,
+        }
+        
+        # Add host configuration if provided
+        if host_config:
+            if 'NetworkMode' in host_config:
+                container_config['network_mode'] = host_config['NetworkMode']
+            if 'Binds' in host_config:
+                volumes = {}
+                for bind in host_config['Binds']:
+                    host_path, container_path = bind.split(':')
+                    volumes[host_path] = {'bind': container_path, 'mode': 'rw'}
+                container_config['volumes'] = volumes
+        
+        # Create the container
+        docker_container = client.containers.create(**container_config)
+        
+        # Return wrapped container
+        return cls(docker_container)
+    
+    def start(self):
+        """Start the container."""
+        self.container.start()
+    
     def state(self):
-        return self.inspect_container["State"]
+        """Get container state information."""
+        self.container.reload()
+        return self.container.attrs["State"]
 
     def status(self):
+        """Get container status."""
         return self.state()["Status"]
 
     def shutdown(self):
+        """Stop and remove the container."""
         self.stop()
         self.remove()
 
     def execute(self, command):
-        eid = self.create_exec(command)
-        return self.start_exec(eid)
+        """Execute a command in the container."""
+        result = self.container.exec_run(command)
+        return result.output
 
     def wait(self, timeout):
-        return self.client.wait(self.id, timeout)
+        """Wait for the container to stop."""
+        return self.container.wait(timeout=timeout)
 
 
 class TestCluster():
+    """Test cluster management using modern Docker SDK."""
 
     def __init__(self, name, working_dir, config_file):
-        config_file_path = os.path.join(working_dir, config_file)
-        cfg_file = ConfigFile.from_filename(config_file_path)
-        c = ConfigDetails(working_dir, [cfg_file],)
-        self.cd = load(c)
         self.name = name
+        self.config = ComposeConfig(working_dir, config_file)
+        self._project = None
 
     def get_project(self):
-        # Dont reuse the client to fix this bug : https://github.com/docker/compose/issues/1275
-        client = docker_client(Environment())
-        project = Project.from_config(self.name, self.cd, client)
-        return project
+        """Get the compose project, creating a new client each time to avoid issues."""
+        # Create a new client each time to avoid reuse issues
+        client = create_docker_client()
+        self._project = ComposeProject(self.name, self.config, client)
+        return self._project
 
     def start(self):
+        """Start all services in the cluster."""
         self.shutdown()
         self.get_project().up()
 
     def is_running(self):
-        state = [container.is_running for container in self.get_project().containers()]
-        return all(state) and len(state) > 0
+        """Check if all services in the cluster are running."""
+        containers = self.get_project().containers()
+        if not containers:
+            return False
+        return all(container.is_running for container in containers)
 
     def is_service_running(self, service_name):
-        return self.get_container(service_name).is_running
+        """Check if a specific service is running."""
+        try:
+            return self.get_container(service_name).is_running
+        except RuntimeError:
+            return False
 
     def shutdown(self):
+        """Shutdown all services in the cluster."""
         project = self.get_project()
-        project.down(ImageType.none, True, True)
+        project.down(remove_volumes=True, remove_orphans=True)
         project.remove_stopped()
 
     def get_container(self, service_name, stopped=False):
+        """Get a container for a specific service."""
+        if stopped:
+            containers = self.get_project().containers([service_name], stopped=True)
+            if containers:
+                return containers[0]
+            raise RuntimeError(f"No container found for service '{service_name}'")
         return self.get_project().get_service(service_name).get_container()
 
     def exit_code(self, service_name):
+        """Get the exit code of a service container."""
         containers = self.get_project().containers([service_name], stopped=True)
-        return containers[0].exit_code
+        if containers:
+            return containers[0].exit_code
+        return None
 
     def wait(self, service_name, timeout):
-        container = self.get_project().containers([service_name], stopped=True)
-        if container[0].is_running:
-            return self.get_project().client.wait(container[0].id, timeout)
+        """Wait for a service container to stop."""
+        containers = self.get_project().containers([service_name], stopped=True)
+        if containers and containers[0].is_running:
+            return containers[0].wait(timeout)
 
     def run_command_on_service(self, service_name, command):
+        """Run a command on a specific service container."""
         return self.run_command(command, self.get_container(service_name))
 
     def service_logs(self, service_name, stopped=False):
+        """Get logs from a service container."""
         if stopped:
             containers = self.get_project().containers([service_name], stopped=True)
-            print(containers[0].logs())
-            return containers[0].logs()
+            if containers:
+                logs = containers[0].logs()
+                print(logs)
+                return logs
+            return b''
         else:
             return self.get_container(service_name).logs()
 
     def run_command(self, command, container):
-        print("Running %s on %s :" % (command, container))
-        eid = container.create_exec(command)
-        output = container.start_exec(eid)
-        print("\n%s " % output)
+        """Run a command on a container."""
+        print("Running %s on %s :" % (command, container.name))
+        result = container.container.exec_run(command)
+        output = result.output
+        if isinstance(output, bytes):
+            print("\n%s " % output.decode('utf-8', errors='ignore'))
+        else:
+            print("\n%s " % output)
         return output
 
     def run_command_on_all(self, command):
+        """Run a command on all containers in the cluster."""
         results = {}
         for container in self.get_project().containers():
             results[container.name_without_project] = self.run_command(command, container)
-
         return results
