@@ -4,7 +4,7 @@ import subprocess
 
 import boto3
 import docker
-from .compose_replacement import (
+from .compose import (
     ComposeConfig, ComposeProject, ComposeContainer, 
     create_docker_client
 )
