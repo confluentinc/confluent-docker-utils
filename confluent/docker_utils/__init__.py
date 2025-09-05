@@ -30,7 +30,7 @@ def build_image(image_name, dockerfile_dir):
     print("Building image %s from %s" % (image_name, dockerfile_dir))
     client = api_client()
     image, build_logs = client.images.build(path=dockerfile_dir, rm=True, tag=image_name)
-    response = "".join(["     %s" % (line,) for line in build_logs])
+    response = "".join(["     %s" % (line.get('stream', '')) for line in build_logs if 'stream' in line])
     print(response)
 
 
@@ -266,8 +266,12 @@ class TestCluster():
     def run_command(self, command, container):
         """Run a command on a container."""
         print("Running %s on %s :" % (command, container.name))
-        output = container.container.exec_run(command).output
-        print("\n%s " % output.decode('utf-8', errors='ignore'))
+        result = container.container.exec_run(command)
+        output = result.output
+        if isinstance(output, bytes):
+            print("\n%s " % output.decode('utf-8', errors='ignore'))
+        else:
+            print("\n%s " % output)
         return output
 
     def run_command_on_all(self, command):

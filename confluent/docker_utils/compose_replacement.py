@@ -86,15 +86,14 @@ class ComposeContainer:
         return None
     
     def create_exec(self, command: str) -> str:
-        """Create an exec instance."""
-        exec_instance = self.container.exec_run(command, detach=True)
-        return exec_instance.output
+        """Create an exec instance and return its ID."""
+        exec_create_result = self.container.client.api.exec_create(self.container.id, command)
+        return exec_create_result['Id']
     
     def start_exec(self, exec_id: str) -> bytes:
-        """Start an exec instance and return output."""
-        # For our simplified implementation, we'll run the command directly
-        # In a full implementation, you'd store the exec_id and run it here
-        return exec_id  # This is actually the output from create_exec
+        """Start an exec instance by ID and return output."""
+        output = self.container.client.api.exec_start(exec_id)
+        return output
     
     def logs(self) -> bytes:
         """Get container logs."""
