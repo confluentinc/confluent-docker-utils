@@ -6,8 +6,70 @@ import boto3
 import docker
 from .compose import (
     ComposeConfig, ComposeProject, ComposeContainer, 
-    create_docker_client
+    create_docker_client, ContainerStatus, DockerStateKeys, 
+    FileConstants, Separators
 )
+
+
+# Docker Testing Constants
+class DockerTestingLabels:
+    """Docker testing label constants."""
+    TESTING_LABEL = "io.confluent.docker.testing"
+    TRUE_VALUE = "true"
+
+
+# AWS ECR Constants
+class ECRKeys:
+    """AWS ECR service keys."""
+    ECR_SERVICE = "ecr"
+    AUTH_DATA = "authorizationData"
+    AUTH_TOKEN = "authorizationToken"
+    PROXY_ENDPOINT = "proxyEndpoint"
+
+
+# Command and Shell Constants
+class CommandStrings:
+    """Command and shell constants."""
+    BASH_C = "bash -c"
+    SUCCESS_TEXT = "success"
+    SUCCESS_BYTES = b"success"
+    BUSYBOX_IMAGE = "busybox"
+    HOST_NETWORK = "host"
+    TMP_VOLUME = "/tmp:/tmp"
+
+
+# Environment Variable Constants
+class EnvVarPatterns:
+    """Environment variable patterns."""
+    DOCKER_PREFIX = "DOCKER_"
+    REGISTRY_SUFFIX = "REGISTRY"
+    TAG_SUFFIX = "TAG"
+    DEFAULT_TAG = "latest"
+    UPSTREAM_SCOPE = "UPSTREAM"
+    TEST_SCOPE = "TEST"
+    SCOPE_SEPARATOR = "_"
+
+
+# Container Configuration Keys
+class ContainerConfigKeys:
+    """Container configuration keys."""
+    IMAGE = "image"
+    COMMAND = "command"
+    LABELS = "labels"
+    HOST_CONFIG = "host_config"
+    NETWORK_MODE = "NetworkMode"
+    BINDS = "Binds"
+    DETACH = "detach"
+    NETWORK_MODE_KEY = "network_mode"
+    VOLUMES = "volumes"
+
+
+# Text Encoding Constants
+class EncodingConstants:
+    """Text encoding constants."""
+    UTF8 = "utf-8"
+    IGNORE_ERRORS = "ignore"
+    STREAM_KEY = "stream"
 
 
 def api_client():
@@ -17,11 +79,11 @@ def api_client():
 
 def ecr_login():
     # see docker/docker-py#1677
-    ecr = boto3.client('ecr')
+    ecr = boto3.client(ECRKeys.ECR_SERVICE)
     login = ecr.get_authorization_token()
-    b64token = login['authorizationData'][0]['authorizationToken'].encode('utf-8')
-    username, password = base64.b64decode(b64token).decode('utf-8').split(':')
-    registry = login['authorizationData'][0]['proxyEndpoint']
+    b64token = login[ECRKeys.AUTH_DATA][0][ECRKeys.AUTH_TOKEN].encode(EncodingConstants.UTF8)
+    username, password = base64.b64decode(b64token).decode(EncodingConstants.UTF8).split(Separators.COLON)
+    registry = login[ECRKeys.AUTH_DATA][0][ECRKeys.PROXY_ENDPOINT]
     client = docker.from_env()
     client.login(username, password, registry=registry)
 
@@ -30,7 +92,7 @@ def build_image(image_name, dockerfile_dir):
     print("Building image %s from %s" % (image_name, dockerfile_dir))
     client = api_client()
     image, build_logs = client.images.build(path=dockerfile_dir, rm=True, tag=image_name)
-    response = "".join(["     %s" % (line.get('stream', '')) for line in build_logs if 'stream' in line])
+    response = "".join(["     %s" % (line.get(EncodingConstants.STREAM_KEY, '')) for line in build_logs if EncodingConstants.STREAM_KEY in line])
     print(response)
 
 
@@ -50,44 +112,44 @@ def pull_image(image_name):
 
 
 def run_docker_command(timeout=None, **kwargs):
-    pull_image(kwargs["image"])
+    pull_image(kwargs[ContainerConfigKeys.IMAGE])
     client = api_client()
-    kwargs["labels"] = {"io.confluent.docker.testing": "true"}
+    kwargs[ContainerConfigKeys.LABELS] = {DockerTestingLabels.TESTING_LABEL: DockerTestingLabels.TRUE_VALUE}
     container = TestContainer.create(client, **kwargs)
     container.start()
     container.wait(timeout)
     logs = container.logs()
-    print("Running command %s: %s" % (kwargs["command"], logs))
+    print("Running command %s: %s" % (kwargs[ContainerConfigKeys.COMMAND], logs))
     container.shutdown()
     return logs
 
 
 def path_exists_in_image(image, path):
     print("Checking for %s in %s" % (path, image))
-    cmd = "bash -c '[ ! -e %s ] || echo success' " % (path,)
+    cmd = f"{CommandStrings.BASH_C} '[ ! -e {path} ] || echo {CommandStrings.SUCCESS_TEXT}' "
     output = run_docker_command(image=image, command=cmd)
-    return b"success" in output
+    return CommandStrings.SUCCESS_BYTES in output
 
 
 def executable_exists_in_image(image, path):
     print("Checking for %s in %s" % (path, image))
-    cmd = "bash -c '[ ! -x %s ] || echo success' " % (path,)
+    cmd = f"{CommandStrings.BASH_C} '[ ! -x {path} ] || echo {CommandStrings.SUCCESS_TEXT}' "
     output = run_docker_command(image=image, command=cmd)
-    return b"success" in output
+    return CommandStrings.SUCCESS_BYTES in output
 
 
 def run_command_on_host(command):
     logs = run_docker_command(
-        image="busybox",
+        image=CommandStrings.BUSYBOX_IMAGE,
         command=command,
-        host_config={'NetworkMode': 'host', 'Binds': ['/tmp:/tmp']})
+        host_config={ContainerConfigKeys.NETWORK_MODE: CommandStrings.HOST_NETWORK, ContainerConfigKeys.BINDS: [CommandStrings.TMP_VOLUME]})
     print("Running command %s: %s" % (command, logs))
     return logs
 
 
 def run_cmd(command):
     if command.startswith('"'):
-        cmd = "bash -c %s" % command
+        cmd = "%s %s" % (CommandStrings.BASH_C, command)
     else:
         cmd = command
 
@@ -109,11 +171,11 @@ def add_registry_and_tag(image, scope=""):
     """
 
     if scope:
-        scope += "_"
+        scope += EnvVarPatterns.SCOPE_SEPARATOR
 
-    return "{0}{1}:{2}".format(os.environ.get("DOCKER_{0}REGISTRY".format(scope), ""),
+    return "{0}{1}:{2}".format(os.environ.get(f"{EnvVarPatterns.DOCKER_PREFIX}{scope}{EnvVarPatterns.REGISTRY_SUFFIX}", ""),
                                image,
-                               os.environ.get("DOCKER_{0}TAG".format(scope), "latest")
+                               os.environ.get(f"{EnvVarPatterns.DOCKER_PREFIX}{scope}{EnvVarPatterns.TAG_SUFFIX}", EnvVarPatterns.DEFAULT_TAG)
                                )
 
 
@@ -127,29 +189,29 @@ class TestContainer(ComposeContainer):
     def create(cls, client, **kwargs):
         """Create a new container using Docker SDK."""
         # Extract Docker SDK compatible parameters
-        image = kwargs.get('image')
-        command = kwargs.get('command')
-        labels = kwargs.get('labels', {})
-        host_config = kwargs.get('host_config', {})
+        image = kwargs.get(ContainerConfigKeys.IMAGE)
+        command = kwargs.get(ContainerConfigKeys.COMMAND)
+        labels = kwargs.get(ContainerConfigKeys.LABELS, {})
+        host_config = kwargs.get(ContainerConfigKeys.HOST_CONFIG, {})
         
         # Create container configuration
         container_config = {
-            'image': image,
-            'command': command,
-            'labels': labels,
-            'detach': True,
+            ContainerConfigKeys.IMAGE: image,
+            ContainerConfigKeys.COMMAND: command,
+            ContainerConfigKeys.LABELS: labels,
+            ContainerConfigKeys.DETACH: True,
         }
         
         # Add host configuration if provided
         if host_config:
-            if 'NetworkMode' in host_config:
-                container_config['network_mode'] = host_config['NetworkMode']
-            if 'Binds' in host_config:
+            if ContainerConfigKeys.NETWORK_MODE in host_config:
+                container_config[ContainerConfigKeys.NETWORK_MODE_KEY] = host_config[ContainerConfigKeys.NETWORK_MODE]
+            if ContainerConfigKeys.BINDS in host_config:
                 volumes = {}
-                for bind in host_config['Binds']:
-                    host_path, container_path = bind.split(':')
-                    volumes[host_path] = {'bind': container_path, 'mode': 'rw'}
-                container_config['volumes'] = volumes
+                for bind in host_config[ContainerConfigKeys.BINDS]:
+                    host_path, container_path = bind.split(Separators.COLON)
+                    volumes[host_path] = {FileConstants.BIND_MODE: container_path, 'mode': FileConstants.READ_WRITE_MODE}
+                container_config[ContainerConfigKeys.VOLUMES] = volumes
         
         # Create the container
         docker_container = client.containers.create(**container_config)
@@ -164,11 +226,11 @@ class TestContainer(ComposeContainer):
     def state(self):
         """Get container state information."""
         self.container.reload()
-        return self.container.attrs["State"]
+        return self.container.attrs[DockerStateKeys.STATE]
 
     def status(self):
         """Get container status."""
-        return self.state()["Status"]
+        return self.state()[DockerStateKeys.STATUS]
 
     def shutdown(self):
         """Stop and remove the container."""
@@ -269,7 +331,7 @@ class TestCluster():
         result = container.container.exec_run(command)
         output = result.output
         if isinstance(output, bytes):
-            print("\n%s " % output.decode('utf-8', errors='ignore'))
+            print("\n%s " % output.decode(EncodingConstants.UTF8, errors=EncodingConstants.IGNORE_ERRORS))
         else:
             print("\n%s " % output)
         return output

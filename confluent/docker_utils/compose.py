@@ -9,6 +9,66 @@ import yaml
 import docker
 from typing import Dict, List, Optional, Any
 import time
+from enum import Enum
+
+
+# Container Status Enums
+class ContainerStatus(Enum):
+    """Container status constants."""
+    RUNNING = "running"
+    EXITED = "exited"
+
+
+# Docker Compose Constants
+class DockerComposeLabels:
+    """Docker Compose label constants."""
+    PROJECT = "com.docker.compose.project"
+    SERVICE = "com.docker.compose.service"
+
+
+class ComposeConfigKeys:
+    """Docker Compose configuration keys."""
+    VERSION = "version"
+    SERVICES = "services"
+    IMAGE = "image"
+    BUILD = "build"
+    COMMAND = "command"
+    ENVIRONMENT = "environment"
+    PORTS = "ports"
+    VOLUMES = "volumes"
+    WORKING_DIR = "working_dir"
+
+
+class DockerStateKeys:
+    """Docker container state keys."""
+    STATE = "State"
+    EXIT_CODE = "ExitCode"
+    ID = "Id"
+    STATUS = "Status"
+
+
+# File and Path Constants
+class FileConstants:
+    """File access and path constants."""
+    READ_MODE = "r"
+    READ_WRITE_MODE = "rw"
+    BIND_MODE = "bind"
+    CURRENT_DIR_PREFIX = "./"
+
+
+# String Separators
+class Separators:
+    """Common string separators."""
+    UNDERSCORE = "_"
+    COLON = ":"
+    EQUALS = "="
+
+
+# Default Values
+class Defaults:
+    """Default configuration values."""
+    COMPOSE_VERSION = "3"
+    CONTAINER_SUFFIX = "_1"
 
 
 class ComposeConfig:
@@ -21,21 +81,21 @@ class ComposeConfig:
     
     def _load_config(self) -> Dict[str, Any]:
         """Load and parse docker-compose.yml file."""
-        with open(self.config_file_path, 'r') as f:
+        with open(self.config_file_path, FileConstants.READ_MODE) as f:
             config = yaml.safe_load(f)
         
         # Normalize the config structure
-        if 'version' not in config:
-            config['version'] = '3'
+        if ComposeConfigKeys.VERSION not in config:
+            config[ComposeConfigKeys.VERSION] = Defaults.COMPOSE_VERSION
         
-        if 'services' not in config:
+        if ComposeConfigKeys.SERVICES not in config:
             raise ValueError("docker-compose.yml must contain 'services' section")
         
         return config
     
     def get_services(self) -> Dict[str, Dict[str, Any]]:
         """Get all service definitions."""
-        return self.config.get('services', {})
+        return self.config.get(ComposeConfigKeys.SERVICES, {})
     
     def get_service(self, service_name: str) -> Dict[str, Any]:
         """Get a specific service definition."""
@@ -66,7 +126,7 @@ class ComposeContainer:
         if self._service_name:
             return self._service_name
         # Container names usually follow pattern: projectname_servicename_1
-        parts = self.name.split('_')
+        parts = self.name.split(Separators.UNDERSCORE)
         if len(parts) >= 2:
             return parts[1]  # service name
         return self.name
@@ -75,20 +135,20 @@ class ComposeContainer:
     def is_running(self) -> bool:
         """Check if container is running."""
         self.container.reload()
-        return self.container.status == 'running'
+        return self.container.status == ContainerStatus.RUNNING.value
     
     @property
     def exit_code(self) -> Optional[int]:
         """Get container exit code."""
         self.container.reload()
-        if self.container.status == 'exited':
-            return self.container.attrs['State']['ExitCode']
+        if self.container.status == ContainerStatus.EXITED.value:
+            return self.container.attrs[DockerStateKeys.STATE][DockerStateKeys.EXIT_CODE]
         return None
     
     def create_exec(self, command: str) -> str:
         """Create an exec instance and return its ID."""
         exec_create_result = self.container.client.api.exec_create(self.container.id, command)
-        return exec_create_result['Id']
+        return exec_create_result[DockerStateKeys.ID]
     
     def start_exec(self, exec_id: str) -> bytes:
         """Start an exec instance by ID and return output."""
@@ -148,11 +208,11 @@ class ComposeProject:
     def containers(self, service_names: Optional[List[str]] = None, stopped: bool = False) -> List[ComposeContainer]:
         """Get containers for the project."""
         filters = {
-            'label': f'com.docker.compose.project={self.name}'
+            'label': f'{DockerComposeLabels.PROJECT}={self.name}'
         }
         
         if not stopped:
-            filters['status'] = 'running'
+            filters['status'] = ContainerStatus.RUNNING.value
         
         docker_containers = self.client.containers.list(all=stopped, filters=filters)
         compose_containers = [ComposeContainer(c) for c in docker_containers]
@@ -161,7 +221,7 @@ class ComposeProject:
             # Filter by service names
             filtered = []
             for container in compose_containers:
-                service_label = container.container.labels.get('com.docker.compose.service')
+                service_label = container.container.labels.get(DockerComposeLabels.SERVICE)
                 if service_label in service_names:
                     filtered.append(container)
             return filtered
@@ -190,10 +250,10 @@ class ComposeProject:
         container_config = self._build_container_config(service_name, service_config)
         
         # Check if container already exists
-        container_name = f"{self.name}_{service_name}_1"
+        container_name = f"{self.name}{Separators.UNDERSCORE}{service_name}{Defaults.CONTAINER_SUFFIX}"
         try:
             existing = self.client.containers.get(container_name)
-            if existing.status != 'running':
+            if existing.status != ContainerStatus.RUNNING.value:
                 existing.start()
             return ComposeContainer(existing)
         except docker.errors.NotFound:
@@ -204,8 +264,8 @@ class ComposeProject:
             name=container_name,
             detach=True,
             labels={
-                'com.docker.compose.project': self.name,
-                'com.docker.compose.service': service_name,
+                DockerComposeLabels.PROJECT: self.name,
+                DockerComposeLabels.SERVICE: service_name,
             },
             **container_config
         )
@@ -217,56 +277,56 @@ class ComposeProject:
         config = {}
         
         # Image
-        if 'image' in service_config:
-            config['image'] = service_config['image']
-        elif 'build' in service_config:
+        if ComposeConfigKeys.IMAGE in service_config:
+            config[ComposeConfigKeys.IMAGE] = service_config[ComposeConfigKeys.IMAGE]
+        elif ComposeConfigKeys.BUILD in service_config:
             # For simplicity, we'll require pre-built images
             # In a full implementation, you'd handle building here
             raise NotImplementedError("Building images not implemented in this example")
         
         # Command
-        if 'command' in service_config:
-            config['command'] = service_config['command']
+        if ComposeConfigKeys.COMMAND in service_config:
+            config[ComposeConfigKeys.COMMAND] = service_config[ComposeConfigKeys.COMMAND]
         
         # Environment variables
-        if 'environment' in service_config:
-            env = service_config['environment']
+        if ComposeConfigKeys.ENVIRONMENT in service_config:
+            env = service_config[ComposeConfigKeys.ENVIRONMENT]
             if isinstance(env, list):
                 # Convert list format to dict
                 env_dict = {}
                 for item in env:
-                    if '=' in item:
-                        key, value = item.split('=', 1)
+                    if Separators.EQUALS in item:
+                        key, value = item.split(Separators.EQUALS, 1)
                         env_dict[key] = value
-                config['environment'] = env_dict
+                config[ComposeConfigKeys.ENVIRONMENT] = env_dict
             else:
-                config['environment'] = env
+                config[ComposeConfigKeys.ENVIRONMENT] = env
         
         # Ports
-        if 'ports' in service_config:
+        if ComposeConfigKeys.PORTS in service_config:
             ports = {}
-            for port_mapping in service_config['ports']:
-                if ':' in str(port_mapping):
-                    host_port, container_port = str(port_mapping).split(':', 1)
+            for port_mapping in service_config[ComposeConfigKeys.PORTS]:
+                if Separators.COLON in str(port_mapping):
+                    host_port, container_port = str(port_mapping).split(Separators.COLON, 1)
                     ports[container_port] = host_port
                 else:
                     ports[str(port_mapping)] = None
-            config['ports'] = ports
+            config[ComposeConfigKeys.PORTS] = ports
         
         # Volumes
-        if 'volumes' in service_config:
+        if ComposeConfigKeys.VOLUMES in service_config:
             volumes = {}
-            for volume in service_config['volumes']:
-                if ':' in volume:
-                    host_path, container_path = volume.split(':', 1)
-                    if host_path.startswith('./'):
+            for volume in service_config[ComposeConfigKeys.VOLUMES]:
+                if Separators.COLON in volume:
+                    host_path, container_path = volume.split(Separators.COLON, 1)
+                    if host_path.startswith(FileConstants.CURRENT_DIR_PREFIX):
                         host_path = os.path.join(self.config.working_dir, host_path[2:])
-                    volumes[host_path] = {'bind': container_path, 'mode': 'rw'}
-            config['volumes'] = volumes
+                    volumes[host_path] = {FileConstants.BIND_MODE: container_path, 'mode': FileConstants.READ_WRITE_MODE}
+            config[ComposeConfigKeys.VOLUMES] = volumes
         
         # Working directory
-        if 'working_dir' in service_config:
-            config['working_dir'] = service_config['working_dir']
+        if ComposeConfigKeys.WORKING_DIR in service_config:
+            config[ComposeConfigKeys.WORKING_DIR] = service_config[ComposeConfigKeys.WORKING_DIR]
         
         return config
 
