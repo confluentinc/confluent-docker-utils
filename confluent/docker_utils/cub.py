@@ -68,14 +68,14 @@ def _normalize_extra_classpath(extra_value):
         if not p:
             continue
         # If user already provided wildcard or a specific jar/file, keep as is
-        if '*' in p or p.endswith('.jar') or p.endswith('/') or p.endswith('\\'):
+        if '*' in p or p.endswith('.jar') or p.endswith('/'):
             # If it ends with a path separator but no wildcard, append '*'
-            if (p.endswith('/') or p.endswith('\\')) and '*' not in p and not p.endswith('/*'):
-                p = p.rstrip('/\\') + '/*'
+            if p.endswith('/') and '*' not in p and not p.endswith('/*'):
+                p = p.rstrip('/') + '/*'
             normalized.append(p)
         else:
             # Append wildcard to include jars under the directory
-            normalized.append(p.rstrip('/\\') + '/*')
+            normalized.append(p.rstrip('/') + '/*')
     return normalized
 
 def _build_classpath():
