@@ -9,7 +9,7 @@ import yaml
 import docker
 from typing import Dict, List, Optional, Any
 import time
-from enum import Enum
+from enum import Enum, StrEnum
 
 
 # Container Status Enums
@@ -20,13 +20,13 @@ class ContainerStatus(Enum):
 
 
 # Docker Compose Constants
-class DockerComposeLabels:
+class DockerComposeLabels(StrEnum):
     """Docker Compose label constants."""
     PROJECT = "com.docker.compose.project"
     SERVICE = "com.docker.compose.service"
 
 
-class ComposeConfigKeys:
+class ComposeConfigKeys(StrEnum):
     """Docker Compose configuration keys."""
     VERSION = "version"
     SERVICES = "services"
@@ -39,7 +39,7 @@ class ComposeConfigKeys:
     WORKING_DIR = "working_dir"
 
 
-class DockerStateKeys:
+class DockerStateKeys(StrEnum):
     """Docker container state keys."""
     STATE = "State"
     EXIT_CODE = "ExitCode"
@@ -48,7 +48,7 @@ class DockerStateKeys:
 
 
 # File and Path Constants
-class FileConstants:
+class FileConstants(StrEnum):
     """File access and path constants."""
     READ_MODE = "r"
     READ_WRITE_MODE = "rw"
@@ -57,7 +57,7 @@ class FileConstants:
 
 
 # String Separators
-class Separators:
+class Separators(StrEnum):
     """Common string separators."""
     UNDERSCORE = "_"
     COLON = ":"
@@ -65,7 +65,7 @@ class Separators:
 
 
 # Default Values
-class Defaults:
+class Defaults(StrEnum):
     """Default configuration values."""
     COMPOSE_VERSION = "3"
     CONTAINER_SUFFIX = "_1"

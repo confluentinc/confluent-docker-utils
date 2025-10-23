@@ -1,6 +1,7 @@
 import base64
 import os
 import subprocess
+from enum import StrEnum
 
 import boto3
 import docker
@@ -11,15 +12,14 @@ from .compose import (
 )
 
 
-# Docker Testing Constants
-class DockerTestingLabels:
+class DockerTestingLabels(StrEnum):
     """Docker testing label constants."""
     TESTING_LABEL = "io.confluent.docker.testing"
     TRUE_VALUE = "true"
 
 
 # AWS ECR Constants
-class ECRKeys:
+class ECRKeys(StrEnum):
     """AWS ECR service keys."""
     ECR_SERVICE = "ecr"
     AUTH_DATA = "authorizationData"
@@ -28,18 +28,20 @@ class ECRKeys:
 
 
 # Command and Shell Constants
-class CommandStrings:
+class CommandStrings(StrEnum):
     """Command and shell constants."""
     BASH_C = "bash -c"
     SUCCESS_TEXT = "success"
-    SUCCESS_BYTES = b"success"
     BUSYBOX_IMAGE = "busybox"
     HOST_NETWORK = "host"
     TMP_VOLUME = "/tmp:/tmp"
 
+# Bytes constant (cannot be in StrEnum)
+SUCCESS_BYTES = b"success"
+
 
 # Environment Variable Constants
-class EnvVarPatterns:
+class EnvVarPatterns(StrEnum):
     """Environment variable patterns."""
     DOCKER_PREFIX = "DOCKER_"
     REGISTRY_SUFFIX = "REGISTRY"
@@ -51,7 +53,7 @@ class EnvVarPatterns:
 
 
 # Container Configuration Keys
-class ContainerConfigKeys:
+class ContainerConfigKeys(StrEnum):
     """Container configuration keys."""
     IMAGE = "image"
     COMMAND = "command"
@@ -64,12 +66,10 @@ class ContainerConfigKeys:
     VOLUMES = "volumes"
 
 
-# Text Encoding Constants
-class EncodingConstants:
-    """Text encoding constants."""
-    UTF8 = "utf-8"
-    IGNORE_ERRORS = "ignore"
-    STREAM_KEY = "stream"
+# String constants
+UTF8_ENCODING = "utf-8"
+IGNORE_DECODE_ERRORS = "ignore" 
+DOCKER_STREAM_KEY = "stream"
 
 
 def api_client():
@@ -81,18 +81,18 @@ def ecr_login():
     # see docker/docker-py#1677
     ecr = boto3.client(ECRKeys.ECR_SERVICE)
     login = ecr.get_authorization_token()
-    b64token = login[ECRKeys.AUTH_DATA][0][ECRKeys.AUTH_TOKEN].encode(EncodingConstants.UTF8)
-    username, password = base64.b64decode(b64token).decode(EncodingConstants.UTF8).split(Separators.COLON)
+    b64token = login[ECRKeys.AUTH_DATA][0][ECRKeys.AUTH_TOKEN].encode(UTF8_ENCODING)
+    username, password = base64.b64decode(b64token).decode(UTF8_ENCODING).split(Separators.COLON)
     registry = login[ECRKeys.AUTH_DATA][0][ECRKeys.PROXY_ENDPOINT]
     client = docker.from_env()
     client.login(username, password, registry=registry)
 
 
 def build_image(image_name, dockerfile_dir):
-    print("Building image %s from %s" % (image_name, dockerfile_dir))
+    print(f"Building image {image_name} from {dockerfile_dir}")
     client = api_client()
     image, build_logs = client.images.build(path=dockerfile_dir, rm=True, tag=image_name)
-    response = "".join(["     %s" % (line.get(EncodingConstants.STREAM_KEY, '')) for line in build_logs if EncodingConstants.STREAM_KEY in line])
+    response = "".join([f"     {line.get(DOCKER_STREAM_KEY, '')}" for line in build_logs if DOCKER_STREAM_KEY in line])
     print(response)
 
 
@@ -119,23 +119,23 @@ def run_docker_command(timeout=None, **kwargs):
     container.start()
     container.wait(timeout)
     logs = container.logs()
-    print("Running command %s: %s" % (kwargs[ContainerConfigKeys.COMMAND], logs))
+    print(f"Running command {kwargs[ContainerConfigKeys.COMMAND]}: {logs}")
     container.shutdown()
     return logs
 
 
 def path_exists_in_image(image, path):
-    print("Checking for %s in %s" % (path, image))
+    print(f"Checking for {path} in {image}")
     cmd = f"{CommandStrings.BASH_C} '[ ! -e {path} ] || echo {CommandStrings.SUCCESS_TEXT}' "
     output = run_docker_command(image=image, command=cmd)
-    return CommandStrings.SUCCESS_BYTES in output
+    return SUCCESS_BYTES in output
 
 
 def executable_exists_in_image(image, path):
-    print("Checking for %s in %s" % (path, image))
+    print(f"Checking for {path} in {image}")
     cmd = f"{CommandStrings.BASH_C} '[ ! -x {path} ] || echo {CommandStrings.SUCCESS_TEXT}' "
     output = run_docker_command(image=image, command=cmd)
-    return CommandStrings.SUCCESS_BYTES in output
+    return SUCCESS_BYTES in output
 
 
 def run_command_on_host(command):
@@ -143,13 +143,13 @@ def run_command_on_host(command):
         image=CommandStrings.BUSYBOX_IMAGE,
         command=command,
         host_config={ContainerConfigKeys.NETWORK_MODE: CommandStrings.HOST_NETWORK, ContainerConfigKeys.BINDS: [CommandStrings.TMP_VOLUME]})
-    print("Running command %s: %s" % (command, logs))
+    print(f"Running command {command}: {logs}")
     return logs
 
 
 def run_cmd(command):
     if command.startswith('"'):
-        cmd = "%s %s" % (CommandStrings.BASH_C, command)
+        cmd = f"{CommandStrings.BASH_C} {command}"
     else:
         cmd = command
 
@@ -173,10 +173,9 @@ def add_registry_and_tag(image, scope=""):
     if scope:
         scope += EnvVarPatterns.SCOPE_SEPARATOR
 
-    return "{0}{1}:{2}".format(os.environ.get(f"{EnvVarPatterns.DOCKER_PREFIX}{scope}{EnvVarPatterns.REGISTRY_SUFFIX}", ""),
-                               image,
-                               os.environ.get(f"{EnvVarPatterns.DOCKER_PREFIX}{scope}{EnvVarPatterns.TAG_SUFFIX}", EnvVarPatterns.DEFAULT_TAG)
-                               )
+    registry = os.environ.get(f"{EnvVarPatterns.DOCKER_PREFIX}{scope}{EnvVarPatterns.REGISTRY_SUFFIX}", "")
+    tag = os.environ.get(f"{EnvVarPatterns.DOCKER_PREFIX}{scope}{EnvVarPatterns.TAG_SUFFIX}", EnvVarPatterns.DEFAULT_TAG)
+    return f"{registry}{image}:{tag}"
 
 
 class TestContainer(ComposeContainer):
@@ -327,13 +326,13 @@ class TestCluster():
 
     def run_command(self, command, container):
         """Run a command on a container."""
-        print("Running %s on %s :" % (command, container.name))
+        print(f"Running {command} on {container.name} :")
         result = container.container.exec_run(command)
         output = result.output
         if isinstance(output, bytes):
-            print("\n%s " % output.decode(EncodingConstants.UTF8, errors=EncodingConstants.IGNORE_ERRORS))
+            print(f"\n{output.decode(UTF8_ENCODING, errors=IGNORE_DECODE_ERRORS)} ")
         else:
-            print("\n%s " % output)
+            print(f"\n{output} ")
         return output
 
     def run_command_on_all(self, command):
