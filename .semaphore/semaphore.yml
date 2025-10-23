@@ -9,7 +9,7 @@ global_job_config:
   prologue:
     commands:
       - checkout
-      - sem-version python 3.9
+      - sem-version python 3.11
       - pip install tox
       - COMMIT_MESSAGE_PREFIX="[ci skip] Publish version"
 blocks:
