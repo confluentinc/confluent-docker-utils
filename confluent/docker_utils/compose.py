@@ -47,13 +47,15 @@ class DockerStateKeys(StrEnum):
     STATUS = "Status"
 
 
-# File and Path Constants
-class FileConstants(StrEnum):
-    """File access and path constants."""
-    READ_MODE = "r"
-    READ_WRITE_MODE = "rw"
-    BIND_MODE = "bind"
-    CURRENT_DIR_PREFIX = "./"
+# File I/O Constants
+FILE_READ_MODE = "r"
+
+# Docker Volume Constants  
+VOLUME_READ_WRITE_MODE = "rw"
+VOLUME_BIND_MODE = "bind"
+
+# Path Constants
+CURRENT_DIR_PREFIX = "./"
 
 
 # String Separators
@@ -81,7 +83,7 @@ class ComposeConfig:
     
     def _load_config(self) -> Dict[str, Any]:
         """Load and parse docker-compose.yml file."""
-        with open(self.config_file_path, FileConstants.READ_MODE) as f:
+        with open(self.config_file_path, FILE_READ_MODE) as f:
             config = yaml.safe_load(f)
         
         # Normalize the config structure
@@ -319,9 +321,9 @@ class ComposeProject:
             for volume in service_config[ComposeConfigKeys.VOLUMES]:
                 if Separators.COLON in volume:
                     host_path, container_path = volume.split(Separators.COLON, 1)
-                    if host_path.startswith(FileConstants.CURRENT_DIR_PREFIX):
+                    if host_path.startswith(CURRENT_DIR_PREFIX):
                         host_path = os.path.join(self.config.working_dir, host_path[2:])
-                    volumes[host_path] = {FileConstants.BIND_MODE: container_path, 'mode': FileConstants.READ_WRITE_MODE}
+                    volumes[host_path] = {VOLUME_BIND_MODE: container_path, 'mode': VOLUME_READ_WRITE_MODE}
             config[ComposeConfigKeys.VOLUMES] = volumes
         
         # Working directory

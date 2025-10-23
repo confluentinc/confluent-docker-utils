@@ -8,14 +8,13 @@ import docker
 from .compose import (
     ComposeConfig, ComposeProject, ComposeContainer, 
     create_docker_client, ContainerStatus, DockerStateKeys, 
-    FileConstants, Separators
+    Separators, VOLUME_BIND_MODE, VOLUME_READ_WRITE_MODE
 )
 
 
-class DockerTestingLabels(StrEnum):
-    """Docker testing label constants."""
-    TESTING_LABEL = "io.confluent.docker.testing"
-    TRUE_VALUE = "true"
+# Docker Testing Constants
+DOCKER_TESTING_LABEL = "io.confluent.docker.testing"
+TRUE_VALUE = "true"
 
 
 # AWS ECR Constants
@@ -28,16 +27,14 @@ class ECRKeys(StrEnum):
 
 
 # Command and Shell Constants
-class CommandStrings(StrEnum):
-    """Command and shell constants."""
-    BASH_C = "bash -c"
-    SUCCESS_TEXT = "success"
-    BUSYBOX_IMAGE = "busybox"
-    HOST_NETWORK = "host"
-    TMP_VOLUME = "/tmp:/tmp"
-
-# Bytes constant (cannot be in StrEnum)
+BASH_C = "bash -c"
+SUCCESS_TEXT = "success"
 SUCCESS_BYTES = b"success"
+
+# Docker Infrastructure Constants  
+BUSYBOX_IMAGE = "busybox"
+HOST_NETWORK = "host"
+TMP_VOLUME = "/tmp:/tmp"
 
 
 # Environment Variable Constants
@@ -114,7 +111,7 @@ def pull_image(image_name):
 def run_docker_command(timeout=None, **kwargs):
     pull_image(kwargs[ContainerConfigKeys.IMAGE])
     client = api_client()
-    kwargs[ContainerConfigKeys.LABELS] = {DockerTestingLabels.TESTING_LABEL: DockerTestingLabels.TRUE_VALUE}
+    kwargs[ContainerConfigKeys.LABELS] = {DOCKER_TESTING_LABEL: TRUE_VALUE}
     container = TestContainer.create(client, **kwargs)
     container.start()
     container.wait(timeout)
@@ -126,30 +123,30 @@ def run_docker_command(timeout=None, **kwargs):
 
 def path_exists_in_image(image, path):
     print(f"Checking for {path} in {image}")
-    cmd = f"{CommandStrings.BASH_C} '[ ! -e {path} ] || echo {CommandStrings.SUCCESS_TEXT}' "
+    cmd = f"{BASH_C} '[ ! -e {path} ] || echo {SUCCESS_TEXT}' "
     output = run_docker_command(image=image, command=cmd)
     return SUCCESS_BYTES in output
 
 
 def executable_exists_in_image(image, path):
     print(f"Checking for {path} in {image}")
-    cmd = f"{CommandStrings.BASH_C} '[ ! -x {path} ] || echo {CommandStrings.SUCCESS_TEXT}' "
+    cmd = f"{BASH_C} '[ ! -x {path} ] || echo {SUCCESS_TEXT}' "
     output = run_docker_command(image=image, command=cmd)
     return SUCCESS_BYTES in output
 
 
 def run_command_on_host(command):
     logs = run_docker_command(
-        image=CommandStrings.BUSYBOX_IMAGE,
+        image=BUSYBOX_IMAGE,
         command=command,
-        host_config={ContainerConfigKeys.NETWORK_MODE: CommandStrings.HOST_NETWORK, ContainerConfigKeys.BINDS: [CommandStrings.TMP_VOLUME]})
+        host_config={ContainerConfigKeys.NETWORK_MODE: HOST_NETWORK, ContainerConfigKeys.BINDS: [TMP_VOLUME]})
     print(f"Running command {command}: {logs}")
     return logs
 
 
 def run_cmd(command):
     if command.startswith('"'):
-        cmd = f"{CommandStrings.BASH_C} {command}"
+        cmd = f"{BASH_C} {command}"
     else:
         cmd = command
 
@@ -209,7 +206,7 @@ class TestContainer(ComposeContainer):
                 volumes = {}
                 for bind in host_config[ContainerConfigKeys.BINDS]:
                     host_path, container_path = bind.split(Separators.COLON)
-                    volumes[host_path] = {FileConstants.BIND_MODE: container_path, 'mode': FileConstants.READ_WRITE_MODE}
+                    volumes[host_path] = {VOLUME_BIND_MODE: container_path, 'mode': VOLUME_READ_WRITE_MODE}
                 container_config[ContainerConfigKeys.VOLUMES] = volumes
         
         # Create the container
