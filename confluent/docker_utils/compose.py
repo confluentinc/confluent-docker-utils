@@ -12,14 +12,12 @@ import time
 from enum import Enum, StrEnum
 
 
-# Container Status Enums
 class ContainerStatus(Enum):
     """Container status constants."""
     RUNNING = "running"
     EXITED = "exited"
 
 
-# Docker Compose Constants
 class DockerComposeLabels(StrEnum):
     """Docker Compose label constants."""
     PROJECT = "com.docker.compose.project"
@@ -47,18 +45,13 @@ class DockerStateKeys(StrEnum):
     STATUS = "Status"
 
 
-# File I/O Constants
 FILE_READ_MODE = "r"
-
-# Docker Volume Constants  
 VOLUME_READ_WRITE_MODE = "rw"
 VOLUME_BIND_MODE = "bind"
 
-# Path Constants
 CURRENT_DIR_PREFIX = "./"
 
 
-# String Separators
 class Separators(StrEnum):
     """Common string separators."""
     UNDERSCORE = "_"
@@ -66,7 +59,6 @@ class Separators(StrEnum):
     EQUALS = "="
 
 
-# Default Values
 class Defaults(StrEnum):
     """Default configuration values."""
     COMPOSE_VERSION = "3"
@@ -86,7 +78,6 @@ class ComposeConfig:
         with open(self.config_file_path, FILE_READ_MODE) as f:
             config = yaml.safe_load(f)
         
-        # Normalize the config structure
         if ComposeConfigKeys.VERSION not in config:
             config[ComposeConfigKeys.VERSION] = Defaults.COMPOSE_VERSION
         
@@ -130,7 +121,7 @@ class ComposeContainer:
         # Container names usually follow pattern: projectname_servicename_1
         parts = self.name.split(Separators.UNDERSCORE)
         if len(parts) >= 2:
-            return parts[1]  # service name
+            return parts[1]
         return self.name
     
     @property
@@ -193,14 +184,12 @@ class ComposeProject:
         """Stop and remove all containers (equivalent to docker-compose down)."""
         containers = self.containers()
         
-        # Stop all containers
         for container in containers:
             try:
                 container.stop()
             except Exception as e:
                 print(f"Error stopping container {container.name}: {e}")
         
-        # Remove containers
         for container in containers:
             try:
                 container.remove()
@@ -220,7 +209,6 @@ class ComposeProject:
         compose_containers = [ComposeContainer(c) for c in docker_containers]
         
         if service_names:
-            # Filter by service names
             filtered = []
             for container in compose_containers:
                 service_label = container.container.labels.get(DockerComposeLabels.SERVICE)
@@ -248,10 +236,8 @@ class ComposeProject:
         """Start a specific service."""
         service_config = self.config.get_service(service_name)
         
-        # Build container configuration
         container_config = self._build_container_config(service_name, service_config)
         
-        # Check if container already exists
         container_name = f"{self.name}{Separators.UNDERSCORE}{service_name}{Defaults.CONTAINER_SUFFIX}"
         try:
             existing = self.client.containers.get(container_name)
@@ -261,7 +247,6 @@ class ComposeProject:
         except docker.errors.NotFound:
             pass
         
-        # Create and start new container
         container = self.client.containers.run(
             name=container_name,
             detach=True,
@@ -278,7 +263,6 @@ class ComposeProject:
         """Build Docker SDK container configuration from compose service config."""
         config = {}
         
-        # Image
         if ComposeConfigKeys.IMAGE in service_config:
             config[ComposeConfigKeys.IMAGE] = service_config[ComposeConfigKeys.IMAGE]
         elif ComposeConfigKeys.BUILD in service_config:
@@ -286,15 +270,12 @@ class ComposeProject:
             # In a full implementation, you'd handle building here
             raise NotImplementedError("Building images not implemented in this example")
         
-        # Command
         if ComposeConfigKeys.COMMAND in service_config:
             config[ComposeConfigKeys.COMMAND] = service_config[ComposeConfigKeys.COMMAND]
         
-        # Environment variables
         if ComposeConfigKeys.ENVIRONMENT in service_config:
             env = service_config[ComposeConfigKeys.ENVIRONMENT]
             if isinstance(env, list):
-                # Convert list format to dict
                 env_dict = {}
                 for item in env:
                     if Separators.EQUALS in item:
@@ -304,7 +285,6 @@ class ComposeProject:
             else:
                 config[ComposeConfigKeys.ENVIRONMENT] = env
         
-        # Ports
         if ComposeConfigKeys.PORTS in service_config:
             ports = {}
             for port_mapping in service_config[ComposeConfigKeys.PORTS]:
@@ -315,7 +295,6 @@ class ComposeProject:
                     ports[str(port_mapping)] = None
             config[ComposeConfigKeys.PORTS] = ports
         
-        # Volumes
         if ComposeConfigKeys.VOLUMES in service_config:
             volumes = {}
             for volume in service_config[ComposeConfigKeys.VOLUMES]:
@@ -326,7 +305,6 @@ class ComposeProject:
                     volumes[host_path] = {VOLUME_BIND_MODE: container_path, 'mode': VOLUME_READ_WRITE_MODE}
             config[ComposeConfigKeys.VOLUMES] = volumes
         
-        # Working directory
         if ComposeConfigKeys.WORKING_DIR in service_config:
             config[ComposeConfigKeys.WORKING_DIR] = service_config[ComposeConfigKeys.WORKING_DIR]
         
