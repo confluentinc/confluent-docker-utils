@@ -12,7 +12,7 @@ import time
 from enum import Enum, StrEnum
 
 
-class ContainerStatus(Enum):
+class ContainerStatus(StrEnum):
     """Container status constants."""
     RUNNING = "running"
     EXITED = "exited"
@@ -128,13 +128,13 @@ class ComposeContainer:
     def is_running(self) -> bool:
         """Check if container is running."""
         self.container.reload()
-        return self.container.status == ContainerStatus.RUNNING.value
+        return self.container.status == ContainerStatus.RUNNING
     
     @property
     def exit_code(self) -> Optional[int]:
         """Get container exit code."""
         self.container.reload()
-        if self.container.status == ContainerStatus.EXITED.value:
+        if self.container.status == ContainerStatus.EXITED:
             return self.container.attrs[DockerStateKeys.STATE][DockerStateKeys.EXIT_CODE]
         return None
     
@@ -203,7 +203,7 @@ class ComposeProject:
         }
         
         if not stopped:
-            filters['status'] = ContainerStatus.RUNNING.value
+            filters['status'] = ContainerStatus.RUNNING
         
         docker_containers = self.client.containers.list(all=stopped, filters=filters)
         compose_containers = [ComposeContainer(c) for c in docker_containers]
@@ -241,7 +241,7 @@ class ComposeProject:
         container_name = f"{self.name}{Separators.UNDERSCORE}{service_name}{Defaults.CONTAINER_SUFFIX}"
         try:
             existing = self.client.containers.get(container_name)
-            if existing.status != ContainerStatus.RUNNING.value:
+            if existing.status != ContainerStatus.RUNNING:
                 existing.start()
             return ComposeContainer(existing)
         except docker.errors.NotFound:
@@ -266,8 +266,6 @@ class ComposeProject:
         if ComposeConfigKeys.IMAGE in service_config:
             config[ComposeConfigKeys.IMAGE] = service_config[ComposeConfigKeys.IMAGE]
         elif ComposeConfigKeys.BUILD in service_config:
-            # For simplicity, we'll require pre-built images
-            # In a full implementation, you'd handle building here
             raise NotImplementedError("Building images not implemented in this example")
         
         if ComposeConfigKeys.COMMAND in service_config:
