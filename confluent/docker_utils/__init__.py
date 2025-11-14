@@ -7,7 +7,7 @@ import boto3
 import docker
 from .compose import (
     ComposeConfig, ComposeProject, ComposeContainer, 
-    create_docker_client, ContainerStatus, DockerStateKeys, 
+    create_docker_client, ContainerStatus, STATE_KEY, STATUS_KEY,
     Separators, VOLUME_BIND_MODE, VOLUME_READ_WRITE_MODE
 )
 
@@ -222,11 +222,11 @@ class TestContainer(ComposeContainer):
     def state(self):
         """Get container state information."""
         self.container.reload()
-        return self.container.attrs[DockerStateKeys.STATE]
+        return self.container.attrs[STATE_KEY]
 
     def status(self):
         """Get container status."""
-        return self.state()[DockerStateKeys.STATUS]
+        return self.state()[STATUS_KEY]
 
     def shutdown(self):
         """Stop and remove the container."""
