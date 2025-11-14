@@ -37,13 +37,10 @@ class ComposeConfigKeys(StrEnum):
     WORKING_DIR = "working_dir"
 
 
-class DockerStateKeys(StrEnum):
-    """Docker container state keys."""
-    STATE = "State"
-    EXIT_CODE = "ExitCode"
-    ID = "Id"
-    STATUS = "Status"
-
+STATE_KEY = "State"
+EXIT_CODE_KEY = "ExitCode"
+ID_KEY = "Id"
+STATUS_KEY = "Status"
 
 FILE_READ_MODE = "r"
 VOLUME_READ_WRITE_MODE = "rw"
@@ -135,13 +132,13 @@ class ComposeContainer:
         """Get container exit code."""
         self.container.reload()
         if self.container.status == ContainerStatus.EXITED:
-            return self.container.attrs[DockerStateKeys.STATE][DockerStateKeys.EXIT_CODE]
+            return self.container.attrs[STATE_KEY][EXIT_CODE_KEY]
         return None
     
     def create_exec(self, command: str) -> str:
         """Create an exec instance and return its ID."""
         exec_create_result = self.container.client.api.exec_create(self.container.id, command)
-        return exec_create_result[DockerStateKeys.ID]
+        return exec_create_result[ID_KEY]
     
     def start_exec(self, exec_id: str) -> bytes:
         """Start an exec instance by ID and return output."""
