@@ -12,12 +12,10 @@ from .compose import (
 )
 
 
-# Docker Testing Constants
 DOCKER_TESTING_LABEL = "io.confluent.docker.testing"
 TRUE_VALUE = "true"
 
 
-# AWS ECR Constants
 class ECRKeys(StrEnum):
     """AWS ECR service keys."""
     ECR_SERVICE = "ecr"
@@ -26,30 +24,24 @@ class ECRKeys(StrEnum):
     PROXY_ENDPOINT = "proxyEndpoint"
 
 
-# Command and Shell Constants
 BASH_C = "bash -c"
 SUCCESS_TEXT = "success"
 SUCCESS_BYTES = b"success"
 
-# Docker Infrastructure Constants  
 BUSYBOX_IMAGE = "busybox"
 HOST_NETWORK = "host"
 TMP_VOLUME = "/tmp:/tmp"
 
 
-# Environment Variable Constants
-class EnvVarPatterns(StrEnum):
-    """Environment variable patterns."""
-    DOCKER_PREFIX = "DOCKER_"
-    REGISTRY_SUFFIX = "REGISTRY"
-    TAG_SUFFIX = "TAG"
-    DEFAULT_TAG = "latest"
-    UPSTREAM_SCOPE = "UPSTREAM"
-    TEST_SCOPE = "TEST"
-    SCOPE_SEPARATOR = "_"
+DOCKER_PREFIX = "DOCKER_"
+REGISTRY_SUFFIX = "REGISTRY"
+TAG_SUFFIX = "TAG"
+DEFAULT_TAG = "latest"
+UPSTREAM_SCOPE = "UPSTREAM"
+TEST_SCOPE = "TEST"
+SCOPE_SEPARATOR = "_"
 
 
-# Container Configuration Keys
 class ContainerConfigKeys(StrEnum):
     """Container configuration keys."""
     IMAGE = "image"
@@ -63,7 +55,6 @@ class ContainerConfigKeys(StrEnum):
     VOLUMES = "volumes"
 
 
-# String constants
 UTF8_ENCODING = "utf-8"
 IGNORE_DECODE_ERRORS = "ignore" 
 DOCKER_STREAM_KEY = "stream"
@@ -168,10 +159,10 @@ def add_registry_and_tag(image, scope=""):
     """
 
     if scope:
-        scope += EnvVarPatterns.SCOPE_SEPARATOR
+        scope += SCOPE_SEPARATOR
 
-    registry = os.environ.get(f"{EnvVarPatterns.DOCKER_PREFIX}{scope}{EnvVarPatterns.REGISTRY_SUFFIX}", "")
-    tag = os.environ.get(f"{EnvVarPatterns.DOCKER_PREFIX}{scope}{EnvVarPatterns.TAG_SUFFIX}", EnvVarPatterns.DEFAULT_TAG)
+    registry = os.environ.get(f"{DOCKER_PREFIX}{scope}{REGISTRY_SUFFIX}", "")
+    tag = os.environ.get(f"{DOCKER_PREFIX}{scope}{TAG_SUFFIX}", DEFAULT_TAG)
     return f"{registry}{image}:{tag}"
 
 
