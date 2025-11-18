@@ -181,7 +181,6 @@ class TestContainer(ComposeContainer):
         labels = kwargs.get(ContainerConfigKeys.LABELS, {})
         host_config = kwargs.get(ContainerConfigKeys.HOST_CONFIG, {})
         
-        # Create container configuration
         container_config = {
             ContainerConfigKeys.IMAGE: image,
             ContainerConfigKeys.COMMAND: command,
@@ -189,7 +188,6 @@ class TestContainer(ComposeContainer):
             ContainerConfigKeys.DETACH: True,
         }
         
-        # Add host configuration if provided
         if host_config:
             if ContainerConfigKeys.NETWORK_MODE in host_config:
                 container_config[ContainerConfigKeys.NETWORK_MODE_KEY] = host_config[ContainerConfigKeys.NETWORK_MODE]
@@ -200,10 +198,7 @@ class TestContainer(ComposeContainer):
                     volumes[host_path] = {VOLUME_BIND_MODE: container_path, 'mode': VOLUME_READ_WRITE_MODE}
                 container_config[ContainerConfigKeys.VOLUMES] = volumes
         
-        # Create the container
         docker_container = client.containers.create(**container_config)
-        
-        # Return wrapped container
         return cls(docker_container)
     
     def start(self):
