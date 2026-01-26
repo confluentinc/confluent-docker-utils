@@ -7,4 +7,4 @@ pytest-cov==6.0.0
 mock==5.1.0
 setuptools==78.1.1
 twine==6.1.0
-wheel==0.45.1
+wheel==0.46.2
