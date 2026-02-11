@@ -186,9 +186,31 @@ class ComposeProject:
         self.name = name
         self.config = config
         self.client = client
+        self._network = None
+    
+    @property
+    def network_name(self) -> str:
+        """Default network name for the project."""
+        return f"{self.name}_default"
+    
+    def _ensure_network(self):
+        """Create project network if it doesn't exist."""
+        if self._network:
+            return self._network
+        
+        try:
+            self._network = self.client.networks.get(self.network_name)
+        except docker.errors.NotFound:
+            self._network = self.client.networks.create(
+                self.network_name,
+                driver="bridge",
+                labels={LABEL_PROJECT: self.name}
+            )
+        return self._network
     
     def up(self, services: Optional[List[str]] = None):
         """Start services."""
+        self._ensure_network()
         for svc in (services or list(self.config.services.keys())):
             self._start_service(svc)
     
@@ -200,6 +222,14 @@ class ComposeProject:
                 c.remove(force=True, v=remove_volumes)
             except (docker.errors.NotFound, docker.errors.APIError):
                 pass
+        
+        # Remove project network
+        try:
+            network = self.client.networks.get(self.network_name)
+            network.remove()
+        except (docker.errors.NotFound, docker.errors.APIError):
+            pass
+        self._network = None
     
     def remove_stopped(self):
         """Remove stopped containers."""
@@ -243,9 +273,13 @@ class ComposeProject:
         if 'image' not in run_config or not run_config['image']:
             raise ValueError(f"Service '{service_name}' has no valid image specified")
         
+        # Use project network for inter-service communication
+        network = self._ensure_network()
+        
         container = self.client.containers.run(
             name=container_name,
             detach=True,
+            network=network.name,
             labels={LABEL_PROJECT: self.name, LABEL_SERVICE: service_name},
             **run_config
         )
