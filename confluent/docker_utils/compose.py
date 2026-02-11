@@ -1,59 +1,64 @@
-"""
-Docker Compose replacement using official Docker SDK.
-
-Drop-in replacement for the deprecated docker-compose Python library.
-"""
+"""Docker Compose replacement using official Docker SDK."""
 
 import os
 import re
-from typing import Dict, List, Optional, Any, Union
+from typing import Any, Dict, List, Optional
 
-import yaml
 import docker
 import docker.errors
+import yaml
 
-
-def expand_env_vars(value: Any) -> Any:
-    """Expand environment variables in compose config values.
-    
-    Supports ${VAR}, ${VAR:-default}, ${VAR-default}, $VAR formats.
-    """
-    if isinstance(value, str):
-        # Pattern for ${VAR}, ${VAR:-default}, ${VAR-default}
-        def replace_var(match):
-            var_expr = match.group(1)
-            # Handle ${VAR:-default} or ${VAR-default}
-            if ':-' in var_expr:
-                var_name, default = var_expr.split(':-', 1)
-                return os.environ.get(var_name, default)
-            elif '-' in var_expr and not var_expr.startswith('-'):
-                var_name, default = var_expr.split('-', 1)
-                return os.environ.get(var_name) if os.environ.get(var_name) is not None else default
-            else:
-                return os.environ.get(var_expr, '')
-        
-        # Replace ${VAR} patterns
-        result = re.sub(r'\$\{([^}]+)\}', replace_var, value)
-        # Replace $VAR patterns (word boundary)
-        result = re.sub(r'\$([A-Za-z_][A-Za-z0-9_]*)', lambda m: os.environ.get(m.group(1), ''), result)
-        return result
-    elif isinstance(value, dict):
-        return {k: expand_env_vars(v) for k, v in value.items()}
-    elif isinstance(value, list):
-        return [expand_env_vars(v) for v in value]
-    return value
-
-# Labels for compose container identification
+# Docker Compose labels
 LABEL_PROJECT = "com.docker.compose.project"
 LABEL_SERVICE = "com.docker.compose.service"
 
-# Container status
+# Container states
 STATUS_RUNNING = "running"
 STATUS_EXITED = "exited"
 
-# Container state keys
+# Container attribute keys
 STATE_KEY = "State"
 EXIT_CODE_KEY = "ExitCode"
+
+# Network driver
+NETWORK_DRIVER_BRIDGE = "bridge"
+
+# Volume mode
+VOLUME_MODE_RW = "rw"
+
+# Environment variable patterns
+ENV_VAR_BRACED_PATTERN = re.compile(r'\$\{([^}]+)\}')
+ENV_VAR_SIMPLE_PATTERN = re.compile(r'\$([A-Za-z_][A-Za-z0-9_]*)')
+
+
+def _expand_env_vars(value: Any) -> Any:
+    """Recursively expand environment variables in config values.
+    
+    Supports: ${VAR}, ${VAR:-default}, ${VAR-default}, $VAR
+    """
+    if isinstance(value, str):
+        def _replace_braced(match: re.Match) -> str:
+            expr = match.group(1)
+            if ':-' in expr:
+                name, default = expr.split(':-', 1)
+                return os.environ.get(name, default)
+            if '-' in expr and not expr.startswith('-'):
+                name, default = expr.split('-', 1)
+                env_val = os.environ.get(name)
+                return env_val if env_val is not None else default
+            return os.environ.get(expr, '')
+        
+        result = ENV_VAR_BRACED_PATTERN.sub(_replace_braced, value)
+        result = ENV_VAR_SIMPLE_PATTERN.sub(lambda m: os.environ.get(m.group(1), ''), result)
+        return result
+    
+    if isinstance(value, dict):
+        return {k: _expand_env_vars(v) for k, v in value.items()}
+    
+    if isinstance(value, list):
+        return [_expand_env_vars(item) for item in value]
+    
+    return value
 
 
 def create_docker_client() -> docker.DockerClient:
@@ -62,33 +67,34 @@ def create_docker_client() -> docker.DockerClient:
 
 
 class ComposeConfig:
-    """Parses and manages docker-compose.yml configuration."""
+    """Parses docker-compose.yml configuration."""
     
     def __init__(self, working_dir: str, config_file: str):
         self.working_dir = working_dir
         self.config_file_path = os.path.join(working_dir, config_file)
-        self.config = self._load()
+        self._config = self._load()
     
     def _load(self) -> Dict[str, Any]:
-        with open(self.config_file_path) as f:
-            config = yaml.safe_load(f)
-        if not config or 'services' not in config:
-            raise ValueError("Invalid compose file: missing 'services'")
-        # Expand environment variables in all config values
-        return expand_env_vars(config)
+        with open(self.config_file_path, encoding='utf-8') as f:
+            raw_config = yaml.safe_load(f)
+        
+        if not raw_config or 'services' not in raw_config:
+            raise ValueError(f"Invalid compose file: missing 'services' in {self.config_file_path}")
+        
+        return _expand_env_vars(raw_config)
     
     @property
-    def services(self) -> Dict[str, Dict]:
-        return self.config.get('services', {})
+    def services(self) -> Dict[str, Dict[str, Any]]:
+        return self._config.get('services', {})
     
     def get_service(self, name: str) -> Dict[str, Any]:
         if name not in self.services:
-            raise ValueError(f"Service '{name}' not found")
+            raise ValueError(f"Service '{name}' not found in compose file")
         return self.services[name]
 
 
 class ComposeContainer:
-    """Wrapper around Docker SDK container with compose-like interface."""
+    """Wrapper around Docker SDK container."""
     
     def __init__(self, container: docker.models.containers.Container):
         self.container = container
@@ -103,10 +109,9 @@ class ComposeContainer:
     
     @property
     def name_without_project(self) -> str:
-        """Service name from container."""
-        label_service = self.container.labels.get(LABEL_SERVICE)
-        if label_service:
-            return label_service
+        service_label = self.container.labels.get(LABEL_SERVICE)
+        if service_label:
+            return service_label
         if '_' in self.name:
             return self.name.rsplit('_', 1)[-1]
         return self.name
@@ -119,46 +124,48 @@ class ComposeContainer:
     @property
     def exit_code(self) -> Optional[int]:
         self.container.reload()
-        return self.container.attrs[STATE_KEY][EXIT_CODE_KEY] if self.container.status == STATUS_EXITED else None
+        if self.container.status == STATUS_EXITED:
+            return self.container.attrs[STATE_KEY][EXIT_CODE_KEY]
+        return None
     
     @property
     def client(self):
-        """For backward compatibility."""
+        """Low-level API client for backward compatibility."""
         return self.container.client.api
     
     @property
-    def inspect_container(self) -> Dict:
-        """For backward compatibility."""
+    def inspect_container(self) -> Dict[str, Any]:
+        """Container attributes for backward compatibility."""
         self.container.reload()
         return self.container.attrs
     
-    def start(self):
+    def start(self) -> None:
         self.container.start()
     
-    def stop(self, timeout: int = 10):
+    def stop(self, timeout: int = 10) -> None:
         try:
             self.container.stop(timeout=timeout)
         except docker.errors.APIError:
             pass
     
-    def remove(self, force: bool = False, v: bool = False):
+    def remove(self, force: bool = False, v: bool = False) -> None:
         try:
             self.container.remove(force=force, v=v)
         except (docker.errors.NotFound, docker.errors.APIError):
             pass
     
-    def wait(self, timeout: Optional[int] = None) -> Dict:
+    def wait(self, timeout: Optional[int] = None) -> Dict[str, Any]:
         return self.container.wait(timeout=timeout)
     
     def logs(self) -> bytes:
         return self.container.logs()
     
     def create_exec(self, command: str) -> str:
-        """For backward compatibility."""
+        """Create exec instance for backward compatibility."""
         return self.container.client.api.exec_create(self.container.id, command)['Id']
     
     def start_exec(self, exec_id: str) -> bytes:
-        """For backward compatibility."""
+        """Start exec instance for backward compatibility."""
         return self.container.client.api.exec_start(exec_id)
     
     def exec_run(self, command: str) -> bytes:
@@ -173,14 +180,16 @@ class ComposeService:
         self.project = project
     
     def get_container(self) -> ComposeContainer:
-        containers = self.project.containers([self.name])
+        containers = self.project.containers(service_names=[self.name])
         if not containers:
             raise RuntimeError(f"No running container for service '{self.name}'")
         return containers[0]
 
 
 class ComposeProject:
-    """Manages multi-container compose project using Docker SDK."""
+    """Manages multi-container compose project."""
+    
+    _PASSTHROUGH_KEYS = ('network_mode', 'working_dir', 'hostname', 'entrypoint', 'user', 'tty', 'stdin_open')
     
     def __init__(self, name: str, config: ComposeConfig, client: docker.DockerClient):
         self.name = name
@@ -190,11 +199,9 @@ class ComposeProject:
     
     @property
     def network_name(self) -> str:
-        """Default network name for the project."""
         return f"{self.name}_default"
     
-    def _ensure_network(self):
-        """Create project network if it doesn't exist."""
+    def _get_or_create_network(self) -> docker.models.networks.Network:
         if self._network:
             return self._network
         
@@ -203,27 +210,29 @@ class ComposeProject:
         except docker.errors.NotFound:
             self._network = self.client.networks.create(
                 self.network_name,
-                driver="bridge",
+                driver=NETWORK_DRIVER_BRIDGE,
                 labels={LABEL_PROJECT: self.name}
             )
         return self._network
     
-    def up(self, services: Optional[List[str]] = None):
-        """Start services."""
-        self._ensure_network()
-        for svc in (services or list(self.config.services.keys())):
-            self._start_service(svc)
+    def up(self, services: Optional[List[str]] = None) -> None:
+        self._get_or_create_network()
+        service_list = services or list(self.config.services.keys())
+        for service_name in service_list:
+            self._start_service(service_name)
     
-    def down(self, remove_images=None, remove_volumes: bool = False, remove_orphans: bool = False):
-        """Stop and remove containers."""
-        for c in self.containers(stopped=True):
+    def down(self, remove_images: Optional[str] = None, remove_volumes: bool = False,
+             remove_orphans: bool = False) -> None:
+        for container in self.containers(stopped=True):
             try:
-                c.stop()
-                c.remove(force=True, v=remove_volumes)
+                container.stop()
+                container.remove(force=True, v=remove_volumes)
             except (docker.errors.NotFound, docker.errors.APIError):
                 pass
         
-        # Remove project network
+        self._remove_network()
+    
+    def _remove_network(self) -> None:
         try:
             network = self.client.networks.get(self.network_name)
             network.remove()
@@ -231,144 +240,162 @@ class ComposeProject:
             pass
         self._network = None
     
-    def remove_stopped(self):
-        """Remove stopped containers."""
-        for c in self.containers(stopped=True):
-            if not c.is_running:
-                c.remove(force=True)
+    def remove_stopped(self) -> None:
+        for container in self.containers(stopped=True):
+            if not container.is_running:
+                container.remove(force=True)
     
-    def containers(self, service_names: Optional[List[str]] = None, stopped: bool = False) -> List[ComposeContainer]:
-        """Get project containers."""
+    def containers(self, service_names: Optional[List[str]] = None,
+                   stopped: bool = False) -> List[ComposeContainer]:
         filters = {'label': f'{LABEL_PROJECT}={self.name}'}
         if not stopped:
             filters['status'] = STATUS_RUNNING
         
-        result = [ComposeContainer(c) for c in self.client.containers.list(all=stopped, filters=filters)]
+        all_containers = self.client.containers.list(all=stopped, filters=filters)
+        result = [ComposeContainer(c) for c in all_containers]
         
         if service_names:
             result = [c for c in result if c.container.labels.get(LABEL_SERVICE) in service_names]
+        
         return result
     
     def get_service(self, name: str) -> ComposeService:
         return ComposeService(name, self)
     
     def _start_service(self, service_name: str) -> ComposeContainer:
-        """Start a single service."""
         container_name = f"{self.name}_{service_name}_1"
         
-        # Check if exists
+        existing = self._get_existing_container(container_name)
+        if existing:
+            return existing
+        
+        service_config = self.config.get_service(service_name)
+        run_kwargs = self._build_run_kwargs(service_name, service_config)
+        
+        try:
+            container = self.client.containers.run(**run_kwargs)
+        except docker.errors.APIError as err:
+            raise RuntimeError(f"Failed to start service '{service_name}': {err}") from err
+        
+        self._verify_container_running(container, service_name)
+        return ComposeContainer(container)
+    
+    def _get_existing_container(self, container_name: str) -> Optional[ComposeContainer]:
         try:
             existing = self.client.containers.get(container_name)
             if existing.status != STATUS_RUNNING:
                 existing.start()
             return ComposeContainer(existing)
         except docker.errors.NotFound:
-            pass
+            return None
+    
+    def _build_run_kwargs(self, service_name: str, service_config: Dict[str, Any]) -> Dict[str, Any]:
+        container_config = self._parse_service_config(service_config)
         
-        # Create new
-        svc_config = self.config.get_service(service_name)
-        run_config = self._build_config(svc_config)
+        if 'image' not in container_config or not container_config['image']:
+            raise ValueError(f"Service '{service_name}' has no valid image")
         
-        # Validate image is set
-        if 'image' not in run_config or not run_config['image']:
-            raise ValueError(f"Service '{service_name}' has no valid image specified")
+        kwargs = {
+            'name': f"{self.name}_{service_name}_1",
+            'detach': True,
+            'labels': {LABEL_PROJECT: self.name, LABEL_SERVICE: service_name},
+            **container_config
+        }
         
-        # Use project network for inter-service communication
-        network = self._ensure_network()
+        if 'network_mode' not in container_config:
+            network = self._get_or_create_network()
+            kwargs['network'] = network.name
+            if 'hostname' not in container_config:
+                kwargs['hostname'] = service_name
         
-        # Don't pass network if network_mode is set (they conflict)
-        if 'network_mode' in run_config:
-            network_kwargs = {}
-        else:
-            network_kwargs = {'network': network.name}
-            # Set hostname if not already in config (for DNS resolution)
-            if 'hostname' not in run_config:
-                network_kwargs['hostname'] = service_name
+        return kwargs
+    
+    def _parse_service_config(self, service_config: Dict[str, Any]) -> Dict[str, Any]:
+        config = {}
         
-        try:
-            container = self.client.containers.run(
-                name=container_name,
-                detach=True,
-                labels={LABEL_PROJECT: self.name, LABEL_SERVICE: service_name},
-                **network_kwargs,
-                **run_config
-            )
-        except docker.errors.APIError as e:
-            raise RuntimeError(f"Failed to start service '{service_name}': {e}")
+        if 'image' in service_config:
+            config['image'] = service_config['image']
         
-        # Verify container is running
+        if 'command' in service_config:
+            config['command'] = service_config['command']
+        
+        if 'environment' in service_config:
+            config['environment'] = self._parse_environment(service_config['environment'])
+        
+        if 'ports' in service_config:
+            config['ports'] = self._parse_ports(service_config['ports'])
+        
+        if 'volumes' in service_config:
+            config['volumes'] = self._parse_volumes(service_config['volumes'])
+        
+        for key in self._PASSTHROUGH_KEYS:
+            if key in service_config:
+                config[key] = service_config[key]
+        
+        return config
+    
+    def _parse_environment(self, env: Any) -> Dict[str, str]:
+        if isinstance(env, list):
+            result = {}
+            for item in env:
+                if not isinstance(item, str):
+                    continue
+                if '=' in item:
+                    key, value = item.split('=', 1)
+                else:
+                    key, value = item, os.environ.get(item, '')
+                result[key] = value
+            return result
+        
+        if isinstance(env, dict):
+            return {
+                key: os.environ.get(key, '') if value is None else str(value)
+                for key, value in env.items()
+            }
+        
+        return env
+    
+    def _parse_ports(self, ports: List[Any]) -> Dict[str, Any]:
+        result = {}
+        for port_spec in ports:
+            port_str = str(port_spec)
+            parts = port_str.split(':')
+            
+            if len(parts) == 1:
+                result[parts[0]] = None
+            elif len(parts) == 2:
+                host_port, container_port = parts
+                result[container_port] = int(host_port) if host_port.isdigit() else host_port
+            elif len(parts) == 3:
+                ip_addr, host_port, container_port = parts
+                host_binding = int(host_port) if host_port else None
+                result[container_port] = (ip_addr, host_binding)
+        
+        return result
+    
+    def _parse_volumes(self, volumes: List[str]) -> Dict[str, Dict[str, str]]:
+        result = {}
+        for volume_spec in volumes:
+            if ':' not in volume_spec:
+                continue
+            
+            parts = volume_spec.split(':')
+            host_path = parts[0]
+            container_path = parts[1]
+            mode = parts[2] if len(parts) > 2 else VOLUME_MODE_RW
+            
+            if host_path.startswith('./'):
+                host_path = os.path.join(self.config.working_dir, host_path[2:])
+            
+            result[host_path] = {'bind': container_path, 'mode': mode}
+        
+        return result
+    
+    def _verify_container_running(self, container: docker.models.containers.Container,
+                                   service_name: str) -> None:
         container.reload()
         if container.status != STATUS_RUNNING:
             logs = container.logs().decode('utf-8', errors='ignore')[-500:]
-            raise RuntimeError(f"Service '{service_name}' container exited immediately. Logs:\n{logs}")
-        
-        return ComposeContainer(container)
-    
-    def _build_config(self, svc: Dict) -> Dict:
-        """Convert compose service config to Docker SDK format."""
-        cfg = {}
-        
-        if 'image' in svc:
-            cfg['image'] = svc['image']
-        
-        if 'command' in svc:
-            cfg['command'] = svc['command']
-        
-        if 'environment' in svc:
-            env = svc['environment']
-            if isinstance(env, list):
-                env_dict: Dict[str, str] = {}
-                for item in env:
-                    if not isinstance(item, str):
-                        continue
-                    if '=' in item:
-                        key, value = item.split('=', 1)
-                    else:
-                        key = item
-                        value = os.environ.get(key, "")
-                    env_dict[key] = value
-                cfg['environment'] = env_dict
-            elif isinstance(env, dict):
-                resolved_env: Dict[str, Any] = {}
-                for key, value in env.items():
-                    if value is None:
-                        resolved_env[key] = os.environ.get(key, "")
-                    else:
-                        resolved_env[key] = value
-                cfg['environment'] = resolved_env
-            else:
-                cfg['environment'] = env
-        
-        if 'ports' in svc:
-            ports: Dict[str, Any] = {}
-            for port_spec in svc['ports']:
-                port_str = str(port_spec)
-                parts = port_str.split(':')
-                if len(parts) == 1:
-                    # Just container port (e.g., "80" or "80/tcp")
-                    ports[parts[0]] = None
-                elif len(parts) == 2:
-                    # HOST:CONTAINER (e.g., "8080:80")
-                    host_port, container_port = parts
-                    ports[container_port] = int(host_port) if host_port.isdigit() else host_port
-                elif len(parts) == 3:
-                    # IP:HOST:CONTAINER (e.g., "127.0.0.1:8080:80")
-                    ip, host_port, container_port = parts
-                    ports[container_port] = (ip, int(host_port) if host_port else None)
-            cfg['ports'] = ports
-        
-        if 'volumes' in svc:
-            cfg['volumes'] = {}
-            for v in svc['volumes']:
-                if ':' in v:
-                    parts = v.split(':')
-                    host = parts[0]
-                    if host.startswith('./'):
-                        host = os.path.join(self.config.working_dir, host[2:])
-                    cfg['volumes'][host] = {'bind': parts[1], 'mode': parts[2] if len(parts) > 2 else 'rw'}
-        
-        for key in ['network_mode', 'working_dir', 'hostname', 'entrypoint', 'user', 'tty', 'stdin_open']:
-            if key in svc:
-                cfg[key] = svc[key]
-        
-        return cfg
+            raise RuntimeError(
+                f"Service '{service_name}' exited immediately.\nLogs:\n{logs}"
+            )
