@@ -276,13 +276,32 @@ class ComposeProject:
         # Use project network for inter-service communication
         network = self._ensure_network()
         
-        container = self.client.containers.run(
-            name=container_name,
-            detach=True,
-            network=network.name,
-            labels={LABEL_PROJECT: self.name, LABEL_SERVICE: service_name},
-            **run_config
-        )
+        # Don't pass network if network_mode is set (they conflict)
+        if 'network_mode' in run_config:
+            network_kwargs = {}
+        else:
+            network_kwargs = {'network': network.name}
+            # Set hostname if not already in config (for DNS resolution)
+            if 'hostname' not in run_config:
+                network_kwargs['hostname'] = service_name
+        
+        try:
+            container = self.client.containers.run(
+                name=container_name,
+                detach=True,
+                labels={LABEL_PROJECT: self.name, LABEL_SERVICE: service_name},
+                **network_kwargs,
+                **run_config
+            )
+        except docker.errors.APIError as e:
+            raise RuntimeError(f"Failed to start service '{service_name}': {e}")
+        
+        # Verify container is running
+        container.reload()
+        if container.status != STATUS_RUNNING:
+            logs = container.logs().decode('utf-8', errors='ignore')[-500:]
+            raise RuntimeError(f"Service '{service_name}' container exited immediately. Logs:\n{logs}")
+        
         return ComposeContainer(container)
     
     def _build_config(self, svc: Dict) -> Dict:
@@ -348,7 +367,7 @@ class ComposeProject:
                         host = os.path.join(self.config.working_dir, host[2:])
                     cfg['volumes'][host] = {'bind': parts[1], 'mode': parts[2] if len(parts) > 2 else 'rw'}
         
-        for key in ['network_mode', 'working_dir', 'hostname', 'entrypoint']:
+        for key in ['network_mode', 'working_dir', 'hostname', 'entrypoint', 'user', 'tty', 'stdin_open']:
             if key in svc:
                 cfg[key] = svc[key]
         
