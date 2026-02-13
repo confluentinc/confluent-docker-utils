@@ -8,6 +8,21 @@ import docker
 import docker.errors
 import yaml
 
+__all__ = [
+    'ComposeConfig',
+    'ComposeContainer',
+    'ComposeProject',
+    'ComposeService',
+    'create_docker_client',
+    'LABEL_PROJECT',
+    'LABEL_SERVICE',
+    'STATUS_RUNNING',
+    'STATUS_EXITED',
+    'STATE_KEY',
+    'EXIT_CODE_KEY',
+    'VOLUME_MODE_RW',
+]
+
 # Docker Compose labels
 LABEL_PROJECT = "com.docker.compose.project"
 LABEL_SERVICE = "com.docker.compose.service"
@@ -112,8 +127,13 @@ class ComposeContainer:
         service_label = self.container.labels.get(LABEL_SERVICE)
         if service_label:
             return service_label
-        if '_' in self.name:
-            return self.name.rsplit('_', 1)[-1]
+        # Container name format: {project}_{service}_{instance}
+        # Extract service name (middle part)
+        parts = self.name.split('_')
+        if len(parts) >= 3:
+            return '_'.join(parts[1:-1])
+        if len(parts) == 2:
+            return parts[1]
         return self.name
     
     @property

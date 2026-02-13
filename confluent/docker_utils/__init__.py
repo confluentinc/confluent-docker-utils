@@ -15,7 +15,32 @@ from .compose import (
     create_docker_client,
     STATE_KEY,
     STATUS_RUNNING,
+    VOLUME_MODE_RW,
 )
+
+__all__ = [
+    # Compose classes
+    'ComposeConfig',
+    'ComposeContainer',
+    'ComposeProject',
+    'ComposeService',
+    'create_docker_client',
+    # Test utilities
+    'TestCluster',
+    'TestContainer',
+    # Functions
+    'api_client',
+    'build_image',
+    'image_exists',
+    'pull_image',
+    'run_docker_command',
+    'run_command_on_host',
+    'run_cmd',
+    'path_exists_in_image',
+    'executable_exists_in_image',
+    'add_registry_and_tag',
+    'ecr_login',
+]
 
 # Host config keys for backward compatibility
 HOST_CONFIG_NETWORK_MODE = "NetworkMode"
@@ -23,9 +48,6 @@ HOST_CONFIG_BINDS = "Binds"
 
 # Testing label
 TESTING_LABEL = "io.confluent.docker.testing"
-
-# Volume configuration
-VOLUME_MODE_RW = "rw"
 
 try:
     import boto3
@@ -283,9 +305,7 @@ class TestCluster:
             container.name_without_project: self.run_command(command, container)
             for container in self._get_project().containers()
         }
-
-
-# Backward compatibility aliases
-def get_project(cluster: TestCluster) -> ComposeProject:
-    """Backward compatibility wrapper."""
-    return cluster._get_project()
+    
+    def get_project(self) -> ComposeProject:
+        """Get the compose project instance."""
+        return self._get_project()
