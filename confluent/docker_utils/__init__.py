@@ -1,5 +1,3 @@
-"""Confluent Docker Utilities."""
-
 import base64
 import os
 import subprocess
@@ -19,16 +17,13 @@ from .compose import (
 )
 
 __all__ = [
-    # Compose classes
     'ComposeConfig',
     'ComposeContainer',
     'ComposeProject',
     'ComposeService',
     'create_docker_client',
-    # Test utilities
     'TestCluster',
     'TestContainer',
-    # Functions
     'api_client',
     'build_image',
     'image_exists',
@@ -42,11 +37,8 @@ __all__ = [
     'ecr_login',
 ]
 
-# Host config keys for backward compatibility
 HOST_CONFIG_NETWORK_MODE = "NetworkMode"
 HOST_CONFIG_BINDS = "Binds"
-
-# Testing label
 TESTING_LABEL = "io.confluent.docker.testing"
 
 try:
@@ -57,12 +49,10 @@ except ImportError:
 
 
 def api_client() -> docker.DockerClient:
-    """Return Docker client from environment."""
     return docker.from_env()
 
 
 def ecr_login() -> None:
-    """Authenticate with AWS ECR."""
     if not _HAS_BOTO3:
         raise ImportError("boto3 required for ECR login")
     
@@ -74,7 +64,6 @@ def ecr_login() -> None:
 
 
 def build_image(image_name: str, dockerfile_dir: str) -> None:
-    """Build Docker image from Dockerfile directory."""
     print(f"Building image {image_name} from {dockerfile_dir}")
     _, build_logs = api_client().images.build(
         path=dockerfile_dir, rm=True, tag=image_name, decode=True
@@ -88,7 +77,6 @@ def build_image(image_name: str, dockerfile_dir: str) -> None:
 
 
 def image_exists(image_name: str) -> bool:
-    """Check if Docker image exists locally."""
     try:
         api_client().images.get(image_name)
         return True
@@ -97,13 +85,11 @@ def image_exists(image_name: str) -> bool:
 
 
 def pull_image(image_name: str) -> None:
-    """Pull Docker image if not present locally."""
     if not image_exists(image_name):
         api_client().images.pull(image_name)
 
 
 def run_docker_command(timeout: Optional[int] = None, **kwargs) -> bytes:
-    """Run command in temporary container and return output."""
     pull_image(kwargs['image'])
     
     container_config = {
@@ -131,7 +117,6 @@ def run_docker_command(timeout: Optional[int] = None, **kwargs) -> bytes:
 
 
 def _parse_binds(binds: list) -> Dict[str, Dict[str, str]]:
-    """Parse bind mount specifications."""
     return {
         bind.split(':')[0]: {'bind': bind.split(':')[1], 'mode': VOLUME_MODE_RW}
         for bind in binds
@@ -139,7 +124,6 @@ def _parse_binds(binds: list) -> Dict[str, Dict[str, str]]:
 
 
 def _cleanup_container(container) -> None:
-    """Stop and remove container, ignoring errors."""
     try:
         container.stop()
         container.remove()
@@ -148,7 +132,6 @@ def _cleanup_container(container) -> None:
 
 
 def path_exists_in_image(image: str, path: str) -> bool:
-    """Check if path exists in Docker image."""
     print(f"Checking for {path} in {image}")
     output = run_docker_command(
         image=image,
@@ -158,7 +141,6 @@ def path_exists_in_image(image: str, path: str) -> bool:
 
 
 def executable_exists_in_image(image: str, path: str) -> bool:
-    """Check if executable exists in Docker image."""
     print(f"Checking for {path} in {image}")
     output = run_docker_command(
         image=image,
@@ -168,7 +150,6 @@ def executable_exists_in_image(image: str, path: str) -> bool:
 
 
 def run_command_on_host(command: str) -> bytes:
-    """Run command on host via busybox container."""
     return run_docker_command(
         image='busybox',
         command=command,
@@ -180,14 +161,12 @@ def run_command_on_host(command: str) -> bytes:
 
 
 def run_cmd(command: str) -> bytes:
-    """Run shell command locally."""
     if command.startswith('"'):
         command = f'bash -c {command}'
     return subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
 
 
 def add_registry_and_tag(image: str, scope: str = '') -> str:
-    """Qualify image name with registry and tag from environment variables."""
     prefix = f'{scope}_' if scope else ''
     registry = os.environ.get(f'DOCKER_{prefix}REGISTRY', '')
     tag = os.environ.get(f'DOCKER_{prefix}TAG', 'latest')
@@ -195,8 +174,6 @@ def add_registry_and_tag(image: str, scope: str = '') -> str:
 
 
 class TestContainer(ComposeContainer):
-    """Container wrapper for testing with lifecycle methods."""
-    
     @classmethod
     def create(cls, client: docker.DockerClient, **kwargs) -> 'TestContainer':
         container_config = {
@@ -230,8 +207,6 @@ class TestContainer(ComposeContainer):
 
 
 class TestCluster:
-    """Multi-container test cluster manager."""
-    
     def __init__(self, name: str, working_dir: str, config_file: str):
         self.name = name
         self._config = ComposeConfig(working_dir, config_file)
@@ -307,5 +282,4 @@ class TestCluster:
         }
     
     def get_project(self) -> ComposeProject:
-        """Get the compose project instance."""
         return self._get_project()

@@ -1,5 +1,3 @@
-"""Docker Compose replacement using official Docker SDK."""
-
 import os
 import re
 from typing import Any, Dict, List, Optional
@@ -23,34 +21,24 @@ __all__ = [
     'VOLUME_MODE_RW',
 ]
 
-# Docker Compose labels
 LABEL_PROJECT = "com.docker.compose.project"
 LABEL_SERVICE = "com.docker.compose.service"
 
-# Container states
 STATUS_RUNNING = "running"
 STATUS_EXITED = "exited"
 
-# Container attribute keys
 STATE_KEY = "State"
 EXIT_CODE_KEY = "ExitCode"
 
-# Network driver
 NETWORK_DRIVER_BRIDGE = "bridge"
 
-# Volume mode
 VOLUME_MODE_RW = "rw"
 
-# Environment variable patterns
 ENV_VAR_BRACED_PATTERN = re.compile(r'\$\{([^}]+)\}')
 ENV_VAR_SIMPLE_PATTERN = re.compile(r'\$([A-Za-z_][A-Za-z0-9_]*)')
 
 
 def _expand_env_vars(value: Any) -> Any:
-    """Recursively expand environment variables in config values.
-    
-    Supports: ${VAR}, ${VAR:-default}, ${VAR-default}, $VAR
-    """
     if isinstance(value, str):
         def _replace_braced(match: re.Match) -> str:
             expr = match.group(1)
@@ -77,13 +65,10 @@ def _expand_env_vars(value: Any) -> Any:
 
 
 def create_docker_client() -> docker.DockerClient:
-    """Create Docker client from environment."""
     return docker.from_env()
 
 
 class ComposeConfig:
-    """Parses docker-compose.yml configuration."""
-    
     def __init__(self, working_dir: str, config_file: str):
         self.working_dir = working_dir
         self.config_file_path = os.path.join(working_dir, config_file)
@@ -109,8 +94,6 @@ class ComposeConfig:
 
 
 class ComposeContainer:
-    """Wrapper around Docker SDK container."""
-    
     def __init__(self, container: docker.models.containers.Container):
         self.container = container
     
@@ -128,7 +111,6 @@ class ComposeContainer:
         if service_label:
             return service_label
         # Container name format: {project}_{service}_{instance}
-        # Extract service name (middle part)
         parts = self.name.split('_')
         if len(parts) >= 3:
             return '_'.join(parts[1:-1])
@@ -150,12 +132,10 @@ class ComposeContainer:
     
     @property
     def client(self):
-        """Low-level API client for backward compatibility."""
         return self.container.client.api
     
     @property
     def inspect_container(self) -> Dict[str, Any]:
-        """Container attributes for backward compatibility."""
         self.container.reload()
         return self.container.attrs
     
@@ -181,11 +161,9 @@ class ComposeContainer:
         return self.container.logs()
     
     def create_exec(self, command: str) -> str:
-        """Create exec instance for backward compatibility."""
         return self.container.client.api.exec_create(self.container.id, command)['Id']
     
     def start_exec(self, exec_id: str) -> bytes:
-        """Start exec instance for backward compatibility."""
         return self.container.client.api.exec_start(exec_id)
     
     def exec_run(self, command: str) -> bytes:
@@ -193,8 +171,6 @@ class ComposeContainer:
 
 
 class ComposeService:
-    """Represents a service in the compose project."""
-    
     def __init__(self, name: str, project: 'ComposeProject'):
         self.name = name
         self.project = project
@@ -207,8 +183,6 @@ class ComposeService:
 
 
 class ComposeProject:
-    """Manages multi-container compose project."""
-    
     _PASSTHROUGH_KEYS = ('network_mode', 'working_dir', 'hostname', 'entrypoint', 'user', 'tty', 'stdin_open')
     
     def __init__(self, name: str, config: ComposeConfig, client: docker.DockerClient):
