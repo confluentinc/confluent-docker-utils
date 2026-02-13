@@ -38,22 +38,32 @@ ENV_VAR_BRACED_PATTERN = re.compile(r'\$\{([^}]+)\}')
 ENV_VAR_SIMPLE_PATTERN = re.compile(r'\$([A-Za-z_][A-Za-z0-9_]*)')
 
 
+def _resolve_braced_env_var(expr: str) -> str:
+    if ':-' in expr:
+        name, default = expr.split(':-', 1)
+        return os.environ.get(name, default)
+    
+    if '-' in expr and not expr.startswith('-'):
+        name, default = expr.split('-', 1)
+        env_val = os.environ.get(name)
+        return env_val if env_val is not None else default
+    
+    return os.environ.get(expr, '')
+
+
+def _expand_env_string(value: str) -> str:
+    result = ENV_VAR_BRACED_PATTERN.sub(
+        lambda m: _resolve_braced_env_var(m.group(1)), value
+    )
+    result = ENV_VAR_SIMPLE_PATTERN.sub(
+        lambda m: os.environ.get(m.group(1), ''), result
+    )
+    return result
+
+
 def _expand_env_vars(value: Any) -> Any:
     if isinstance(value, str):
-        def _replace_braced(match: re.Match) -> str:
-            expr = match.group(1)
-            if ':-' in expr:
-                name, default = expr.split(':-', 1)
-                return os.environ.get(name, default)
-            if '-' in expr and not expr.startswith('-'):
-                name, default = expr.split('-', 1)
-                env_val = os.environ.get(name)
-                return env_val if env_val is not None else default
-            return os.environ.get(expr, '')
-        
-        result = ENV_VAR_BRACED_PATTERN.sub(_replace_braced, value)
-        result = ENV_VAR_SIMPLE_PATTERN.sub(lambda m: os.environ.get(m.group(1), ''), result)
-        return result
+        return _expand_env_string(value)
     
     if isinstance(value, dict):
         return {k: _expand_env_vars(v) for k, v in value.items()}

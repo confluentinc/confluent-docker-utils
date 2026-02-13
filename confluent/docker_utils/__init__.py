@@ -1,7 +1,7 @@
 import base64
 import os
 import subprocess
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import docker
 
@@ -41,11 +41,11 @@ HOST_CONFIG_NETWORK_MODE = "NetworkMode"
 HOST_CONFIG_BINDS = "Binds"
 TESTING_LABEL = "io.confluent.docker.testing"
 
+boto3 = None
 try:
     import boto3
-    _HAS_BOTO3 = True
 except ImportError:
-    _HAS_BOTO3 = False
+    pass
 
 
 def api_client() -> docker.DockerClient:
@@ -53,8 +53,8 @@ def api_client() -> docker.DockerClient:
 
 
 def ecr_login() -> None:
-    if not _HAS_BOTO3:
-        raise ImportError("boto3 required for ECR login")
+    if boto3 is None:
+        raise ImportError("boto3 required for ECR login: pip install boto3")
     
     ecr = boto3.client('ecr')
     auth_data = ecr.get_authorization_token()['authorizationData'][0]
@@ -85,8 +85,30 @@ def image_exists(image_name: str) -> bool:
 
 
 def pull_image(image_name: str) -> None:
-    if not image_exists(image_name):
+    if image_exists(image_name):
+        return
+    try:
         api_client().images.pull(image_name)
+    except docker.errors.APIError as err:
+        raise RuntimeError(f"Failed to pull image '{image_name}': {err}") from err
+
+
+def parse_bind_mount(bind_spec: str) -> Tuple[str, Dict[str, str]]:
+    parts = bind_spec.split(':')
+    if len(parts) < 2:
+        raise ValueError(f"Invalid bind mount format: {bind_spec}")
+    host_path = parts[0]
+    container_path = parts[1]
+    mode = parts[2] if len(parts) > 2 else VOLUME_MODE_RW
+    return host_path, {'bind': container_path, 'mode': mode}
+
+
+def _parse_binds(binds: list) -> Dict[str, Dict[str, str]]:
+    result = {}
+    for bind_spec in binds:
+        host_path, mount_config = parse_bind_mount(bind_spec)
+        result[host_path] = mount_config
+    return result
 
 
 def run_docker_command(timeout: Optional[int] = None, **kwargs) -> bytes:
@@ -116,18 +138,11 @@ def run_docker_command(timeout: Optional[int] = None, **kwargs) -> bytes:
         _cleanup_container(container)
 
 
-def _parse_binds(binds: list) -> Dict[str, Dict[str, str]]:
-    return {
-        bind.split(':')[0]: {'bind': bind.split(':')[1], 'mode': VOLUME_MODE_RW}
-        for bind in binds
-    }
-
-
 def _cleanup_container(container) -> None:
     try:
         container.stop()
         container.remove()
-    except Exception:
+    except docker.errors.APIError:
         pass
 
 
@@ -161,9 +176,11 @@ def run_command_on_host(command: str) -> bytes:
 
 
 def run_cmd(command: str) -> bytes:
-    if command.startswith('"'):
-        command = f'bash -c {command}'
-    return subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+    shell_command = f'bash -c {command}' if command.startswith('"') else command
+    try:
+        return subprocess.check_output(shell_command, shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        raise RuntimeError(f"Command failed with exit code {err.returncode}: {err.output}") from err
 
 
 def add_registry_and_tag(image: str, scope: str = '') -> str:
