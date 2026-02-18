@@ -27,7 +27,7 @@ except ImportError:
     pass
 
 
-def api_client() -> docker.DockerClient:
+def docker_client() -> docker.DockerClient:
     return docker.from_env()
 
 
@@ -44,7 +44,7 @@ def ecr_login() -> None:
 
 def build_image(image_name: str, dockerfile_dir: str) -> None:
     print(f"Building image {image_name} from {dockerfile_dir}")
-    _, build_logs = api_client().images.build(
+    _, build_logs = docker_client().images.build(
         path=dockerfile_dir, rm=True, tag=image_name, decode=True
     )
     for log_line in build_logs:
@@ -57,7 +57,7 @@ def build_image(image_name: str, dockerfile_dir: str) -> None:
 
 def image_exists(image_name: str) -> bool:
     try:
-        api_client().images.get(image_name)
+        docker_client().images.get(image_name)
         return True
     except docker.errors.ImageNotFound:
         return False
@@ -67,7 +67,7 @@ def pull_image(image_name: str) -> None:
     if image_exists(image_name):
         return
     try:
-        api_client().images.pull(image_name)
+        docker_client().images.pull(image_name)
     except docker.errors.APIError as err:
         raise RuntimeError(f"Failed to pull image '{image_name}': {err}") from err
 
@@ -117,7 +117,7 @@ def run_docker_command(timeout: Optional[int] = None, **kwargs) -> bytes:
         host_config=kwargs.get('host_config', {})
     )
     
-    container = api_client().containers.create(**container_config)
+    container = docker_client().containers.create(**container_config)
     try:
         container.start()
         container.wait(timeout=timeout)
