@@ -133,7 +133,7 @@ def _cleanup_container(container) -> None:
         container.stop()
         container.remove()
     except docker.errors.NotFound:
-        pass
+        print(f"Container {container.id} already removed")
 
 
 def path_exists_in_image(image: str, path: str) -> bool:
@@ -167,10 +167,7 @@ def run_command_on_host(command: str) -> bytes:
 
 def run_cmd(command: str) -> bytes:
     shell_command = f'bash -c {command}' if command.startswith('"') else command
-    try:
-        return subprocess.check_output(shell_command, shell=True, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as err:
-        raise RuntimeError(f"Command failed with exit code {err.returncode}: {err.output}") from err
+    return subprocess.check_output(shell_command, shell=True, stderr=subprocess.STDOUT)
 
 
 def add_registry_and_tag(image: str, scope: str = '') -> str:

@@ -212,7 +212,7 @@ class ComposeProject:
         try:
             for service_name in service_list:
                 self._start_service(service_name)
-        except Exception:
+        except (docker.errors.APIError, RuntimeError, ValueError):
             self.down()
             raise
     
