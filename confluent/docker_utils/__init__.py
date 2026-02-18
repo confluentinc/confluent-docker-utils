@@ -16,27 +16,6 @@ from .compose import (
     VOLUME_MODE_RW,
 )
 
-__all__ = [
-    'ComposeConfig',
-    'ComposeContainer',
-    'ComposeProject',
-    'ComposeService',
-    'create_docker_client',
-    'TestCluster',
-    'TestContainer',
-    'api_client',
-    'build_image',
-    'image_exists',
-    'pull_image',
-    'run_docker_command',
-    'run_command_on_host',
-    'run_cmd',
-    'path_exists_in_image',
-    'executable_exists_in_image',
-    'add_registry_and_tag',
-    'ecr_login',
-]
-
 HOST_CONFIG_NETWORK_MODE = "NetworkMode"
 HOST_CONFIG_BINDS = "Binds"
 TESTING_LABEL = "io.confluent.docker.testing"
@@ -111,21 +90,32 @@ def _parse_binds(binds: list) -> Dict[str, Dict[str, str]]:
     return result
 
 
-def run_docker_command(timeout: Optional[int] = None, **kwargs) -> bytes:
-    pull_image(kwargs['image'])
-    
-    container_config = {
-        'image': kwargs['image'],
-        'command': kwargs.get('command'),
-        'labels': {TESTING_LABEL: 'true'},
+def _build_container_config(image: str, command: Optional[str], labels: Dict,
+                            host_config: Dict) -> Dict:
+    config = {
+        'image': image,
+        'command': command,
+        'labels': labels,
         'detach': True,
     }
     
-    host_config = kwargs.get('host_config', {})
     if HOST_CONFIG_NETWORK_MODE in host_config:
-        container_config['network_mode'] = host_config[HOST_CONFIG_NETWORK_MODE]
+        config['network_mode'] = host_config[HOST_CONFIG_NETWORK_MODE]
     if HOST_CONFIG_BINDS in host_config:
-        container_config['volumes'] = _parse_binds(host_config[HOST_CONFIG_BINDS])
+        config['volumes'] = _parse_binds(host_config[HOST_CONFIG_BINDS])
+    
+    return config
+
+
+def run_docker_command(timeout: Optional[int] = None, **kwargs) -> bytes:
+    pull_image(kwargs['image'])
+    
+    container_config = _build_container_config(
+        image=kwargs['image'],
+        command=kwargs.get('command'),
+        labels={TESTING_LABEL: 'true'},
+        host_config=kwargs.get('host_config', {})
+    )
     
     container = api_client().containers.create(**container_config)
     try:
@@ -142,7 +132,7 @@ def _cleanup_container(container) -> None:
     try:
         container.stop()
         container.remove()
-    except docker.errors.APIError:
+    except docker.errors.NotFound:
         pass
 
 
@@ -193,19 +183,12 @@ def add_registry_and_tag(image: str, scope: str = '') -> str:
 class TestContainer(ComposeContainer):
     @classmethod
     def create(cls, client: docker.DockerClient, **kwargs) -> 'TestContainer':
-        container_config = {
-            'image': kwargs.get('image'),
-            'command': kwargs.get('command'),
-            'labels': kwargs.get('labels', {}),
-            'detach': True,
-        }
-        
-        host_config = kwargs.get('host_config', {})
-        if HOST_CONFIG_NETWORK_MODE in host_config:
-            container_config['network_mode'] = host_config[HOST_CONFIG_NETWORK_MODE]
-        if HOST_CONFIG_BINDS in host_config:
-            container_config['volumes'] = _parse_binds(host_config[HOST_CONFIG_BINDS])
-        
+        container_config = _build_container_config(
+            image=kwargs.get('image'),
+            command=kwargs.get('command'),
+            labels=kwargs.get('labels', {}),
+            host_config=kwargs.get('host_config', {})
+        )
         return cls(client.containers.create(**container_config))
     
     def state(self) -> Dict:
@@ -228,20 +211,18 @@ class TestCluster:
         self.name = name
         self._config = ComposeConfig(working_dir, config_file)
     
-    def _get_project(self) -> ComposeProject:
+    def get_project(self) -> ComposeProject:
         return ComposeProject(self.name, self._config, create_docker_client())
     
     def start(self) -> None:
         self.shutdown()
-        self._get_project().up()
+        self.get_project().up()
     
     def shutdown(self) -> None:
-        project = self._get_project()
-        project.down(remove_volumes=True)
-        project.remove_stopped()
+        self.get_project().down(remove_volumes=True)
     
     def is_running(self) -> bool:
-        containers = self._get_project().containers()
+        containers = self.get_project().containers()
         return bool(containers) and all(c.is_running for c in containers)
     
     def is_service_running(self, service_name: str) -> bool:
@@ -252,22 +233,22 @@ class TestCluster:
     
     def get_container(self, service_name: str, stopped: bool = False) -> ComposeContainer:
         if stopped:
-            containers = self._get_project().containers(
+            containers = self.get_project().containers(
                 service_names=[service_name], stopped=True
             )
             if containers:
                 return containers[0]
             raise RuntimeError(f"No container for '{service_name}'")
-        return self._get_project().get_service(service_name).get_container()
+        return self.get_project().get_service(service_name).get_container()
     
     def exit_code(self, service_name: str) -> Optional[int]:
-        containers = self._get_project().containers(
+        containers = self.get_project().containers(
             service_names=[service_name], stopped=True
         )
         return containers[0].exit_code if containers else None
     
     def wait(self, service_name: str, timeout: Optional[int] = None) -> Optional[Dict]:
-        containers = self._get_project().containers(
+        containers = self.get_project().containers(
             service_names=[service_name], stopped=True
         )
         if containers and containers[0].is_running:
@@ -276,7 +257,7 @@ class TestCluster:
     
     def service_logs(self, service_name: str, stopped: bool = False) -> bytes:
         if stopped:
-            containers = self._get_project().containers(
+            containers = self.get_project().containers(
                 service_names=[service_name], stopped=True
             )
             return containers[0].logs() if containers else b''
@@ -295,8 +276,5 @@ class TestCluster:
     def run_command_on_all(self, command: str) -> Dict[str, bytes]:
         return {
             container.name_without_project: self.run_command(command, container)
-            for container in self._get_project().containers()
+            for container in self.get_project().containers()
         }
-    
-    def get_project(self) -> ComposeProject:
-        return self._get_project()

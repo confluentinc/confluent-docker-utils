@@ -6,21 +6,6 @@ import docker
 import docker.errors
 import yaml
 
-__all__ = [
-    'ComposeConfig',
-    'ComposeContainer',
-    'ComposeProject',
-    'ComposeService',
-    'create_docker_client',
-    'LABEL_PROJECT',
-    'LABEL_SERVICE',
-    'STATUS_RUNNING',
-    'STATUS_EXITED',
-    'STATE_KEY',
-    'EXIT_CODE_KEY',
-    'VOLUME_MODE_RW',
-]
-
 LABEL_PROJECT = "com.docker.compose.project"
 LABEL_SERVICE = "com.docker.compose.service"
 
@@ -36,15 +21,18 @@ VOLUME_MODE_RW = "rw"
 
 ENV_VAR_BRACED_PATTERN = re.compile(r'\$\{([^}]+)\}')
 ENV_VAR_SIMPLE_PATTERN = re.compile(r'\$([A-Za-z_][A-Za-z0-9_]*)')
+ENV_VAR_DEFAULT_UNSET_PATTERN = re.compile(r'^([A-Za-z_][A-Za-z0-9_]*)-(.+)$')
 
 
 def _resolve_braced_env_var(expr: str) -> str:
     if ':-' in expr:
         name, default = expr.split(':-', 1)
-        return os.environ.get(name, default)
+        value = os.environ.get(name, '')
+        return default if value == '' else value
     
-    if '-' in expr and not expr.startswith('-'):
-        name, default = expr.split('-', 1)
+    match = ENV_VAR_DEFAULT_UNSET_PATTERN.match(expr)
+    if match:
+        name, default = match.groups()
         env_val = os.environ.get(name)
         return env_val if env_val is not None else default
     
@@ -120,7 +108,6 @@ class ComposeContainer:
         service_label = self.container.labels.get(LABEL_SERVICE)
         if service_label:
             return service_label
-        # Container name format: {project}_{service}_{instance}
         parts = self.name.split('_')
         if len(parts) >= 3:
             return '_'.join(parts[1:-1])
@@ -155,13 +142,13 @@ class ComposeContainer:
     def stop(self, timeout: int = 10) -> None:
         try:
             self.container.stop(timeout=timeout)
-        except docker.errors.APIError:
+        except docker.errors.NotFound:
             pass
     
     def remove(self, force: bool = False, v: bool = False) -> None:
         try:
             self.container.remove(force=force, v=v)
-        except (docker.errors.NotFound, docker.errors.APIError):
+        except docker.errors.NotFound:
             pass
     
     def wait(self, timeout: Optional[int] = None) -> Dict[str, Any]:
@@ -222,8 +209,12 @@ class ComposeProject:
     def up(self, services: Optional[List[str]] = None) -> None:
         self._get_or_create_network()
         service_list = services or list(self.config.services.keys())
-        for service_name in service_list:
-            self._start_service(service_name)
+        try:
+            for service_name in service_list:
+                self._start_service(service_name)
+        except Exception:
+            self.down()
+            raise
     
     def down(self, remove_images: Optional[str] = None, remove_volumes: bool = False,
              remove_orphans: bool = False) -> None:
@@ -231,7 +222,7 @@ class ComposeProject:
             try:
                 container.stop()
                 container.remove(force=True, v=remove_volumes)
-            except (docker.errors.NotFound, docker.errors.APIError):
+            except docker.errors.NotFound:
                 pass
         
         self._remove_network()
@@ -240,7 +231,7 @@ class ComposeProject:
         try:
             network = self.client.networks.get(self.network_name)
             network.remove()
-        except (docker.errors.NotFound, docker.errors.APIError):
+        except docker.errors.NotFound:
             pass
         self._network = None
     
@@ -276,11 +267,7 @@ class ComposeProject:
         service_config = self.config.get_service(service_name)
         run_kwargs = self._build_run_kwargs(service_name, service_config)
         
-        try:
-            container = self.client.containers.run(**run_kwargs)
-        except docker.errors.APIError as err:
-            raise RuntimeError(f"Failed to start service '{service_name}': {err}") from err
-        
+        container = self.client.containers.run(**run_kwargs)
         self._verify_container_running(container, service_name)
         return ComposeContainer(container)
     
@@ -357,7 +344,7 @@ class ComposeProject:
                 for key, value in env.items()
             }
         
-        return env
+        raise ValueError(f"environment must be list or dict, got {type(env).__name__}")
     
     def _parse_ports(self, ports: List[Any]) -> Dict[str, Any]:
         result = {}
@@ -366,16 +353,25 @@ class ComposeProject:
             parts = port_str.split(':')
             
             if len(parts) == 1:
-                result[parts[0]] = None
+                container_port = self._normalize_port(parts[0])
+                result[container_port] = None
             elif len(parts) == 2:
                 host_port, container_port = parts
+                container_port = self._normalize_port(container_port)
                 result[container_port] = int(host_port) if host_port.isdigit() else host_port
             elif len(parts) == 3:
                 ip_addr, host_port, container_port = parts
-                host_binding = int(host_port) if host_port else None
+                container_port = self._normalize_port(container_port)
+                host_binding = int(host_port) if host_port.isdigit() else None
                 result[container_port] = (ip_addr, host_binding)
         
         return result
+    
+    def _normalize_port(self, port: str) -> str:
+        port = port.strip()
+        if '/' not in port:
+            return f"{port}/tcp"
+        return port
     
     def _parse_volumes(self, volumes: List[str]) -> Dict[str, Dict[str, str]]:
         result = {}
