@@ -1,8 +1,9 @@
 import base64
 import os
 import subprocess
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
+import boto3
 import docker
 
 from .compose import (
@@ -20,21 +21,12 @@ HOST_CONFIG_NETWORK_MODE = "NetworkMode"
 HOST_CONFIG_BINDS = "Binds"
 TESTING_LABEL = "io.confluent.docker.testing"
 
-boto3 = None
-try:
-    import boto3
-except ImportError:
-    pass
-
 
 def docker_client() -> docker.DockerClient:
     return docker.from_env()
 
 
 def ecr_login() -> None:
-    if boto3 is None:
-        raise ImportError("boto3 required for ECR login: pip install boto3")
-    
     ecr = boto3.client('ecr')
     auth_data = ecr.get_authorization_token()['authorizationData'][0]
     token = base64.b64decode(auth_data['authorizationToken'].encode()).decode()
@@ -90,8 +82,8 @@ def _parse_binds(binds: list) -> Dict[str, Dict[str, str]]:
     return result
 
 
-def _build_container_config(image: str, command: Optional[str], labels: Dict,
-                            host_config: Dict) -> Dict:
+def _build_container_config(image: str, command: Optional[str], labels: Dict[str, str],
+                            host_config: Dict[str, Any]) -> Dict[str, Any]:
     config = {
         'image': image,
         'command': command,
