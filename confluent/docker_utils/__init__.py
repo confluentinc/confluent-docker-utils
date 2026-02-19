@@ -3,8 +3,13 @@ import os
 import subprocess
 from typing import Any, Dict, Optional, Tuple
 
-import boto3
 import docker
+
+try:
+    import boto3
+    HAS_BOTO3 = True
+except ImportError:
+    HAS_BOTO3 = False
 
 from .compose import (
     ComposeConfig,
@@ -27,6 +32,8 @@ def docker_client() -> docker.DockerClient:
 
 
 def ecr_login() -> None:
+    if not HAS_BOTO3:
+        raise ImportError("boto3 is required for ECR login. Install with: pip install boto3")
     ecr = boto3.client('ecr')
     auth_data = ecr.get_authorization_token()['authorizationData'][0]
     token = base64.b64decode(auth_data['authorizationToken'].encode()).decode()
