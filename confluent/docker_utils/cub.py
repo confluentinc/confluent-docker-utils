@@ -46,7 +46,54 @@ import sys
 import time
 from requests.auth import HTTPBasicAuth
 
-CLASSPATH = os.environ.get("CUB_CLASSPATH", '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"')
+# Build CLASSPATH with optional extra directories from env var CUB_CLASSPATH_DIRS (or fallback CUB_EXTRA_CLASSPATH)
+# - Accepts one or more directories separated by ':' ';' or ','
+# - For each directory, if no wildcard/jar is provided, appends '/*' to include all jars within
+# - Uses ':' as final classpath separator (Linux/JVM convention)
+DEFAULT_BASE_CLASSPATH = '"/usr/share/java/cp-base/*:/usr/share/java/cp-base-new/*"'
+
+def _strip_outer_quotes(s):
+    s = s.strip()
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        return s[1:-1]
+    return s
+
+def _normalize_extra_classpath(extra_value):
+    if not extra_value:
+        return []
+    parts = re.split(r'[;:,]', extra_value)
+    normalized = []
+    for p in parts:
+        p = p.strip()
+        if not p:
+            continue
+        # If user already provided wildcard or a specific jar/file, keep as is
+        if '*' in p or p.endswith('.jar') or p.endswith('/'):
+            # If it ends with a path separator but no wildcard, append '*'
+            if p.endswith('/') and '*' not in p and not p.endswith('/*'):
+                p = p.rstrip('/') + '/*'
+            normalized.append(p)
+        else:
+            # Append wildcard to include jars under the directory
+            normalized.append(p.rstrip('/') + '/*')
+    return normalized
+
+def _build_classpath():
+    base = os.environ.get("CUB_CLASSPATH", DEFAULT_BASE_CLASSPATH)
+    extra = os.environ.get("CUB_CLASSPATH_DIRS") or os.environ.get("CUB_EXTRA_CLASSPATH") or ""
+
+    base_unquoted = _strip_outer_quotes(base)
+    extras = _normalize_extra_classpath(extra)
+
+    if not extras:
+        # Keep original quoting
+        return base if base.strip() else DEFAULT_BASE_CLASSPATH
+
+    sep = ":"  # Always use JVM/Linux classpath separator
+    full = sep.join([p for p in [base_unquoted] + extras if p])
+    return f'"{full}"'
+
+CLASSPATH = _build_classpath()
 LOG4J_FILE_NAME = "log4j.properties"
 DEFAULT_LOG4J_FILE = f"/etc/cp-base-new/{LOG4J_FILE_NAME}"
 LOG4J2_FILE_NAME = "log4j2.yaml"

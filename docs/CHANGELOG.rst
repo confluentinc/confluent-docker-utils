@@ -1,3 +1,10 @@
+Unreleased
+--------------------------------------------------------------------------------
+
+* Add `CUB_CLASSPATH_DIRS` environment variable to append one or more directories to the Java CLASSPATH (fallback to `CUB_EXTRA_CLASSPATH`).
+  Accepts `:`, `;` or `,` separators and normalizes each directory to include `/*` when missing.
+
+
 Version 0.0.35
 --------------------------------------------------------------------------------
 
