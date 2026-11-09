@@ -3,8 +3,6 @@ lang: unknown
 lang_version: unknown
 renovatebot:
   enable: true
-  automerge:
-    enable: true
 git:
   enable: true
 semaphore:
@@ -19,3 +17,6 @@ code_artifact:
   enable: true
   package_paths:
     - pypi-internal/pypi//confluent-docker-utils
+automerge:
+  renovate:
+    enable: true
